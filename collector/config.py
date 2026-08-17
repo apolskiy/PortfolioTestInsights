@@ -27,6 +27,56 @@ class ConfigError(ValueError):
 
 
 @dataclass(frozen=True)
+class SloPolicy:
+    """The error-budget policy the report evaluates each test against.
+
+    The objective is a multiple of a test's own established median rather than
+    an absolute duration, because no suite here declares a per-test duration
+    SLA. Seeding an absolute figure from observed history and then reporting
+    against it would be circular, and one figure across tests ranging from a
+    millisecond to half a minute would be meaningless.
+
+    Attributes:
+        window_runs: Trailing runs considered.
+        tolerance: Multiple of the baseline median above which a run breaches.
+        budget: Fraction of the window allowed to breach before it is spent.
+        min_observations: Below this, no verdict is published - a budget
+            computed from a handful of runs is arithmetic, not evidence.
+        floor_ms: Tests whose baseline median falls below this are excluded. A
+            multiple of a millisecond is measurement noise, not degradation.
+    """
+
+    window_runs: int = 20
+    tolerance: float = 3.0
+    budget: float = 0.10
+    min_observations: int = 10
+    floor_ms: float = 100.0
+
+
+def load_slo(path: Path | None = None) -> SloPolicy:
+    """Read the error-budget policy, falling back to the declared defaults.
+
+    Args:
+        path: Location of the YAML file. Defaults to ``config/sources.yaml``.
+
+    Returns:
+        The policy. A file with no ``slo`` block yields the defaults rather than
+        an error, so the report works before the policy is tuned.
+    """
+    config_path = path or DEFAULT_CONFIG_PATH
+    with open(config_path, encoding="utf-8") as handle:
+        document = yaml.safe_load(handle) or {}
+    block = document.get("slo") or {}
+    return SloPolicy(
+        window_runs=int(block.get("window_runs", SloPolicy.window_runs)),
+        tolerance=float(block.get("tolerance", SloPolicy.tolerance)),
+        budget=float(block.get("budget", SloPolicy.budget)),
+        min_observations=int(block.get("min_observations", SloPolicy.min_observations)),
+        floor_ms=float(block.get("floor_ms", SloPolicy.floor_ms)),
+    )
+
+
+@dataclass(frozen=True)
 class ArtifactSpec:
     """One artifact pattern within a repository.
 

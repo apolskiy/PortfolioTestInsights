@@ -10,6 +10,41 @@
 #
 # `glob` is matched with fnmatch against the paths inside the artifact zip.
 
+# Error-budget policy for the SLO section of the report.
+#
+# The objective is deliberately **relative** - a multiple of each test's own
+# established median - rather than an absolute millisecond figure. No suite in
+# this portfolio declares a per-test duration SLA, so an absolute number here
+# would be invented rather than measured, and a single figure across tests
+# ranging from 1 ms to 30 s would be meaningless anyway.
+#
+# What this does *not* do is restate CountryWeather's API thresholds (5.0s
+# countries, 3.0s weather). Those are per-HTTP-request SLAs enforced inside that
+# suite, and this record holds *test* durations - a test issuing several calls
+# is not comparable to one of them. Duplicating the number here would produce a
+# second gate measuring a different thing under the same name.
+slo:
+  # Trailing runs considered. Short enough that a regression shows up while it
+  # is still recent, long enough that one bad run does not spend the budget.
+  window_runs: 20
+  # A run breaches when it exceeds this multiple of the test's baseline median.
+  tolerance: 3.0
+  # Fraction of the window allowed to breach before the budget is spent.
+  budget: 0.10
+  # Below this many observations in the window, no verdict is published. A
+  # budget computed from four runs is arithmetic, not evidence.
+  min_observations: 10
+  # Tests whose baseline median is below this are excluded outright.
+  #
+  # Measured, not guessed: the median test in this record has a **1 ms**
+  # baseline and 145 of 234 sit under 10 ms. A 3x tolerance on 1 ms means
+  # "breached at 3 ms", which is scheduler jitter and timer granularity rather
+  # than degradation - the first draft of this section duly reported 51 of 225
+  # tests as having spent their budget, almost all of them sub-millisecond unit
+  # tests. A relative objective needs an absolute floor beneath which slowness
+  # is not a thing anyone experiences.
+  floor_ms: 100
+
 sources:
   - repo: apolskiy/PlaywrightAPWebsiteAutomation
     prefix: PAWA

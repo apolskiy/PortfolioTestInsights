@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 from typing import Final
 
-from collector.config import load_sources
+from collector.config import SloPolicy, load_slo, load_sources
 from collector.index import DEFAULT_INDEX_PATH
 from collector.render import render_page
 
@@ -373,6 +373,122 @@ def volatility(connection: sqlite3.Connection) -> list[str]:
     return lines + [""]
 
 
+def error_budget(connection: sqlite3.Connection) -> list[str]:
+    """Report how much of each test's duration error budget has been spent.
+
+    A single slow run failing a build is noise; sustained degradation is signal.
+    An error budget expresses that difference - it tolerates the occasional blip
+    and reports only when breaches become routine.
+
+    The objective here is **relative**: a run breaches when it exceeds a
+    multiple of that test's own established median. That choice is forced by the
+    data. No suite in this portfolio declares a per-test duration SLA, so an
+    absolute threshold would have to be seeded from this very history and then
+    measured against it, which proves nothing. A relative objective instead
+    answers the question actually worth asking - is this test getting slower
+    than it used to be.
+
+    Two things this deliberately does not do. It does not restate
+    CountryWeather's per-request API thresholds: those govern one HTTP call and
+    this record holds whole-test durations, so the same number would be
+    measuring a different thing under the same name. And it does not gate
+    anything - see DESIGN.md section 1. It publishes budget consumption; a suite
+    that owns an SLO is the thing entitled to fail a build over it.
+
+    Args:
+        connection: Open index connection.
+
+    Returns:
+        Report lines.
+    """
+    policy = load_slo()
+    codes = repo_codes()
+    labels = test_labels(connection)
+    lines = ["## Duration error budget", ""]
+    lines.append(
+        f"A run breaches when it exceeds **{policy.tolerance:g}x** that test's baseline "
+        f"median. The budget allows **{policy.budget:.0%}** of the trailing "
+        f"**{policy.window_runs}** runs to breach before it is spent. Tests with fewer "
+        f"than {policy.min_observations} observations in the window, or a baseline median "
+        f"under {policy.floor_ms:g} ms, are omitted - a multiple of a millisecond is "
+        "measurement noise rather than degradation."
+    )
+    lines.append("")
+
+    rows = _budget_rows(connection, policy)
+    if not rows:
+        lines.append("No test has enough observations in the window to support a verdict.")
+        return lines + [""]
+
+    # Only tests that actually breached are listed. A table of identical zeroes
+    # is not a finding, and ranking ties arbitrarily would invite a reader to
+    # read an order into rows that have none.
+    breaching = [row for row in rows if row[1]]
+    spent = [row for row in rows if row[0] > policy.budget]
+
+    if not breaching:
+        lines.append(
+            f"**No test breached its objective in the trailing window.** "
+            f"{len(rows)} tests carried enough observations to judge; the rest were "
+            "omitted by the thresholds above rather than passing quietly."
+        )
+        return lines + [""]
+
+    lines.append("| Repo | Test ID | Test | Window | Breaches | Budget used | Verdict |")
+    lines.append("|---|---|---|---:|---:|---:|---|")
+    for consumed, breaches, seen, repo, identity in breaching[:TOP_N]:
+        verdict = "**spent**" if consumed > policy.budget else "within budget"
+        lines.append(
+            f"| {_code(repo, codes)} | {_cells(repo, identity, labels)} | {seen} | "
+            f"{breaches} | {consumed:.0%} | {verdict} |"
+        )
+    lines.append("")
+    lines.append(
+        f"**{len(spent)} of {len(rows)}** tests with a verdict have spent their budget; "
+        f"{len(breaching)} breached at least once."
+    )
+    return lines + [""]
+
+
+def _budget_rows(
+    connection: sqlite3.Connection, policy: SloPolicy
+) -> list[tuple[float, int, int, str, str]]:
+    """Compute budget consumption per test over the trailing window.
+
+    Args:
+        connection: Open index connection.
+        policy: The error-budget policy.
+
+    Returns:
+        ``(consumed, breaches, observations, repo, identity)`` sorted worst
+        first, covering only tests with enough observations to judge.
+    """
+    query = """
+        SELECT r.repo, r.identity, ru.started_at, r.duration_ms
+        FROM results r JOIN runs ru ON ru.repo = r.repo AND ru.run_id = r.run_id
+        WHERE r.duration_ms IS NOT NULL AND r.source_format <> 'derived'
+          AND r.status = 'passed'
+        ORDER BY ru.started_at
+    """
+    history: dict[tuple[str, str], list[float]] = {}
+    for repo, identity, _when, duration in connection.execute(query):
+        history.setdefault((repo, identity), []).append(float(duration))
+
+    rows: list[tuple[float, int, int, str, str]] = []
+    for (repo, identity), durations in history.items():
+        window = durations[-policy.window_runs :]
+        if len(window) < policy.min_observations:
+            continue
+        baseline = statistics.median(durations)
+        if baseline < policy.floor_ms:
+            continue
+        limit = baseline * policy.tolerance
+        breaches = sum(1 for value in window if value > limit)
+        rows.append((breaches / len(window), breaches, len(window), repo, identity))
+    rows.sort(reverse=True)
+    return rows
+
+
 def duration_drift(connection: sqlite3.Connection) -> list[str]:
     """Report the slowest tests and how far their tail sits above their median.
 
@@ -570,6 +686,7 @@ def build_report(index_path: Path) -> str:
             failure_inventory(connection),
             volatility(connection),
             duration_drift(connection),
+            error_budget(connection),
             coverage_gaps(connection),
             anomalies(connection),
         ]
