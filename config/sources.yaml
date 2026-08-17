@@ -49,3 +49,16 @@ sources:
       - name: "^emulator-reports-(?P<os>[\\w-]+)-py(?P<python>[\\d.]+)$"
         parser: junit
         glob: "emulator-results.xml"
+      # The container suite runs outside `testpaths`, so its results appear in
+      # neither the emulator artifacts above nor any other. Six assigned IDs
+      # (PAP_10001..PAP_10006) existed for tests this record had never seen,
+      # which the legend made visible by starting PublicAP's range at 10007.
+      #
+      # `image` is captured as a parameter rather than folded into the artifact
+      # name because the same tests run against two different images - the one
+      # built from the commit, and the one already published. That is a real
+      # difference in the system under test, so it is data on the row rather
+      # than two config entries.
+      - name: "^image-reports-(?P<image>built|published)$"
+        parser: junit
+        glob: "image-results.xml"
