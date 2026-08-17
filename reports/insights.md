@@ -5,7 +5,7 @@
 | Repository | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
 | CountryWeather | 41 | 17 | 1552 | 15 | 15 |
-| PlaywrightAPWebsiteAutomation | 64 | 41 | 3511 | 19 | 19 |
+| PlaywrightAPWebsiteAutomation | 65 | 41 | 3595 | 21 | 21 |
 | PublicAP | 14 | 36 | 5568 | 0 | 0 |
 | VM-Deployment-and-Configuration | 22 | 140 | 3422 | 0 | 0 |
 
@@ -17,13 +17,13 @@ This is the strongest statement the data currently supports, and it is a narrow 
 
 ## Failures
 
-**34 failing observations** across 21 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.
+**36 failing observations** across 21 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.
 
 | Repository | Test | Status | Count | With trace |
 |---|---|---|---:|---:|
 | CountryWeather | CWA_10006 | broken | 6 | 6 |
-| PlaywrightAPWebsiteAutomation | PAWA_10033 | failed | 3 | 3 |
-| PlaywrightAPWebsiteAutomation | PAWA_10034 | failed | 3 | 3 |
+| PlaywrightAPWebsiteAutomation | PAWA_10033 | failed | 4 | 4 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | failed | 4 | 4 |
 | PlaywrightAPWebsiteAutomation | PAWA_10026 | broken | 2 | 2 |
 | PlaywrightAPWebsiteAutomation | PAWA_10035 | failed | 2 | 2 |
 | PlaywrightAPWebsiteAutomation | PAWA_10037 | broken | 2 | 2 |
@@ -49,16 +49,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repository | Test | Flips | Observations |
 |---|---|---:|---:|
-| PlaywrightAPWebsiteAutomation | PAWA_10034 | 6 | 29 |
-| PlaywrightAPWebsiteAutomation | PAWA_10033 | 6 | 29 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | 7 | 30 |
+| PlaywrightAPWebsiteAutomation | PAWA_10033 | 7 | 30 |
 | CountryWeather | CWA_10006 | 4 | 150 |
-| PlaywrightAPWebsiteAutomation | PAWA_10038 | 4 | 64 |
-| PlaywrightAPWebsiteAutomation | PAWA_10035 | 4 | 64 |
+| PlaywrightAPWebsiteAutomation | PAWA_10038 | 4 | 65 |
+| PlaywrightAPWebsiteAutomation | PAWA_10035 | 4 | 65 |
 | CountryWeather | CWA_10009 | 2 | 250 |
 | CountryWeather | CWA_10001 | 2 | 250 |
-| PlaywrightAPWebsiteAutomation | PAWA_10031 | 2 | 203 |
-| PlaywrightAPWebsiteAutomation | PAWA_10028 | 2 | 203 |
-| PlaywrightAPWebsiteAutomation | PAWA_10039 | 2 | 64 |
+| PlaywrightAPWebsiteAutomation | PAWA_10031 | 2 | 209 |
+| PlaywrightAPWebsiteAutomation | PAWA_10028 | 2 | 209 |
+| PlaywrightAPWebsiteAutomation | PAWA_10039 | 2 | 65 |
 
 ## Duration
 
@@ -66,9 +66,9 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 
 | Repository | Test | Median | p95 | p95/median | Runs |
 |---|---|---:|---:|---:|---:|
-| PlaywrightAPWebsiteAutomation | PAWA_10002 | 72 ms | 266 ms | 3.7x | 112 |
+| PlaywrightAPWebsiteAutomation | PAWA_10002 | 71 ms | 269 ms | 3.8x | 115 |
 | PublicAP | PAP_10031 | 1 ms | 3 ms | 3.0x | 56 |
-| PlaywrightAPWebsiteAutomation | PAWA_10001 | 114 ms | 312 ms | 2.7x | 112 |
+| PlaywrightAPWebsiteAutomation | PAWA_10001 | 118 ms | 312 ms | 2.6x | 115 |
 | PlaywrightAPWebsiteAutomation | PAWA_10034 | 86 ms | 204 ms | 2.4x | 26 |
 | VM-Deployment-and-Configuration | VMD_10103 | 21 ms | 49 ms | 2.3x | 19 |
 | PublicAP | PAP_10028 | 1 ms | 2 ms | 2.0x | 392 |
@@ -82,7 +82,7 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 | Repository | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
-| PlaywrightAPWebsiteAutomation | 3511 | 3511 | 156 | allure_raw,allure_report |
+| PlaywrightAPWebsiteAutomation | 3595 | 3595 | 240 | allure_raw,allure_report |
 | PublicAP | 5568 | 0 | 432 | junit |
 | VM-Deployment-and-Configuration | 3422 | 286 | 174 | allure_raw |
 
@@ -101,6 +101,7 @@ Step coverage is uneven by format, not by choice: JUnit cannot express steps at 
 | PlaywrightAPWebsiteAutomation | 32000447197 | execution-reports | no_members_matched | 2026-08-17 | failure |
 | PlaywrightAPWebsiteAutomation | 32000475911 | execution-reports | no_members_matched | 2026-08-17 | failure |
 | PlaywrightAPWebsiteAutomation | 32001067305 | execution-reports | no_members_matched | 2026-08-17 | failure |
+| PlaywrightAPWebsiteAutomation | 32003827285 | execution-reports | no_members_matched | 2026-08-17 | cancelled |
 
 An expired artifact is routine. An artifact that exists while containing no results is not: the upload step ran, so the job believed it had something to publish. Each row records the pattern that missed and a sample of what the archive actually held, because a wrong glob and an empty report look identical from the outside and want opposite fixes.
 
