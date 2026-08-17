@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Test Insights</title>
+<meta name="description" content="Cross-repository test reliability report, generated
+ from the durable record on every ingestion.">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1c1c1c; --muted: #5a5a5a; --line: #d8d8d8;
+  --head: #f2f2f2; --accent: #0b5fa5; --code: #f4f4f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171a; --fg: #e8e8e8; --muted: #a3a3a3; --line: #2f343a;
+    --head: #1d2126; --accent: #6fb3ef; --code: #1d2126;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 2rem 1.25rem 4rem;
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+main { max-width: 60rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; margin: 0 0 .35rem; }
+h2 { font-size: 1.25rem; margin: 2.5rem 0 .75rem; padding-bottom: .35rem;
+     border-bottom: 1px solid var(--line); }
+p { margin: .8rem 0; }
+.subtitle { color: var(--muted); margin: 0 0 2rem; font-size: .95rem; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+th, td { padding: .5rem .7rem; border: 1px solid var(--line); text-align: left; }
+th { background: var(--head); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+code { background: var(--code); padding: .12rem .35rem; border-radius: 3px;
+       font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .88em; }
+a { color: var(--accent); }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
+         color: var(--muted); font-size: .88rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Portfolio Test Insights</h1>
+<h2>Inventory</h2>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Repository</th>
+<th class="num">Runs</th>
+<th class="num">Tests</th>
+<th class="num">Observations</th>
+<th class="num">Failures</th>
+<th class="num">With trace</th>
+</tr></thead><tbody>
+<tr>
+<td>CountryWeather</td>
+<td class="num">40</td>
+<td class="num">17</td>
+<td class="num">1519</td>
+<td class="num">12</td>
+<td class="num">12</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td class="num">62</td>
+<td class="num">41</td>
+<td class="num">3355</td>
+<td class="num">19</td>
+<td class="num">19</td>
+</tr>
+<tr>
+<td>PublicAP</td>
+<td class="num">13</td>
+<td class="num">36</td>
+<td class="num">5136</td>
+<td class="num">0</td>
+<td class="num">0</td>
+</tr>
+<tr>
+<td>VM-Deployment-and-Configuration</td>
+<td class="num">21</td>
+<td class="num">140</td>
+<td class="num">3248</td>
+<td class="num">0</td>
+<td class="num">0</td>
+</tr>
+</tbody></table></div>
+<h2>Same-input disagreement</h2>
+<p>None. Every test that ran more than once within a single workflow run - which today means PublicAP&#x27;s four-leg matrix, the only place the same commit is exercised more than once - agreed with itself every time.</p>
+<p>This is the strongest statement the data currently supports, and it is a narrow one. No suite reruns a failure, so a test that fails once and passes on retry would never be observed doing so. Absence of disagreement here is not evidence that no test is flaky; it is evidence that none disagreed across operating system and Python version.</p>
+<h2>Failures</h2>
+<p><strong>31 failing observations</strong> across 18 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.</p>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Repository</th>
+<th>Test</th>
+<th>Status</th>
+<th class="num">Count</th>
+<th class="num">With trace</th>
+</tr></thead><tbody>
+<tr>
+<td>CountryWeather</td>
+<td>test_country_present_in_region</td>
+<td>broken</td>
+<td class="num">6</td>
+<td class="num">6</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_case_study_publishes_the_actual_suite_size</td>
+<td>failed</td>
+<td class="num">3</td>
+<td class="num">3</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_landing_page_publishes_the_actual_suite_size</td>
+<td>failed</td>
+<td class="num">3</td>
+<td class="num">3</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_profile_header_and_footer_persist_across_tabs</td>
+<td>broken</td>
+<td class="num">2</td>
+<td class="num">2</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_desktop_layout_has_no_horizontal_overflow</td>
+<td>broken</td>
+<td class="num">2</td>
+<td class="num">2</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_desktop_navigation_renders_on_a_single_row</td>
+<td>failed</td>
+<td class="num">2</td>
+<td class="num">2</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_mobile_navigation_wraps_onto_multiple_rows</td>
+<td>failed</td>
+<td class="num">2</td>
+<td class="num">2</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_all_population_check</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_country_by_name</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_nonexistent_country_returns_empty</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_nonexistent_country_returns_404</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_nonexistent_country_returns_empty</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_forecast_by_city</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_home_panel_renders_the_skills_matrix</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_documentation_link_opens_in_a_hardened_new_tab</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_project_panel_publishes_a_documentation_link</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_desktop_skills_matrix_shows_column_headers</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_mobile_skills_matrix_hides_column_headers</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+</tbody></table></div>
+<h2>Outcome volatility</h2>
+<p>How often a test&#x27;s outcome changed from one run to the next. This is a signal, not a verdict: a test that broke and was fixed flips exactly as much as a test that is genuinely unstable, and only the same-input section above can tell them apart.</p>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Repository</th>
+<th>Test</th>
+<th class="num">Flips</th>
+<th class="num">Observations</th>
+</tr></thead><tbody>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_landing_page_publishes_the_actual_suite_size</td>
+<td class="num">6</td>
+<td class="num">27</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_case_study_publishes_the_actual_suite_size</td>
+<td class="num">6</td>
+<td class="num">27</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_country_present_in_region</td>
+<td class="num">4</td>
+<td class="num">145</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_mobile_navigation_wraps_onto_multiple_rows</td>
+<td class="num">4</td>
+<td class="num">62</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_desktop_navigation_renders_on_a_single_row</td>
+<td class="num">4</td>
+<td class="num">62</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_forecast_by_city</td>
+<td class="num">2</td>
+<td class="num">245</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_country_by_name</td>
+<td class="num">2</td>
+<td class="num">245</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_project_panel_publishes_a_documentation_link</td>
+<td class="num">2</td>
+<td class="num">191</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_documentation_link_opens_in_a_hardened_new_tab</td>
+<td class="num">2</td>
+<td class="num">191</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_mobile_skills_matrix_hides_column_headers</td>
+<td class="num">2</td>
+<td class="num">62</td>
+</tr>
+</tbody></table></div>
+<h2>Duration</h2>
+<p>Passing runs only, for tests with at least 8 of them - a failed test&#x27;s duration measures where it gave up, not what it costs. Ranked by how far the 95th percentile sits above the median, which finds tests that are usually fast and occasionally are not.</p>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Repository</th>
+<th>Test</th>
+<th class="num">Median</th>
+<th class="num">p95</th>
+<th class="num">p95/median</th>
+<th class="num">Runs</th>
+</tr></thead><tbody>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_route_loads_without_console_or_network_errors</td>
+<td class="num">72 ms</td>
+<td class="num">269 ms</td>
+<td class="num">3.8x</td>
+<td class="num">108</td>
+</tr>
+<tr>
+<td>PublicAP</td>
+<td>test_uninterpretable_delay_yields_the_sentinel</td>
+<td class="num">1 ms</td>
+<td class="num">3 ms</td>
+<td class="num">3.0x</td>
+<td class="num">100</td>
+</tr>
+<tr>
+<td>PublicAP</td>
+<td>test_aborted_requests_render_their_own_status</td>
+<td class="num">1 ms</td>
+<td class="num">3 ms</td>
+<td class="num">3.0x</td>
+<td class="num">52</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_route_responds_with_http_200</td>
+<td class="num">114 ms</td>
+<td class="num">314 ms</td>
+<td class="num">2.7x</td>
+<td class="num">108</td>
+</tr>
+<tr>
+<td>VM-Deployment-and-Configuration</td>
+<td>test_volume_label</td>
+<td class="num">21 ms</td>
+<td class="num">49 ms</td>
+<td class="num">2.3x</td>
+<td class="num">18</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td>test_case_study_publishes_the_actual_suite_size</td>
+<td class="num">88 ms</td>
+<td class="num">204 ms</td>
+<td class="num">2.3x</td>
+<td class="num">24</td>
+</tr>
+<tr>
+<td>PublicAP</td>
+<td>test_unsupported_code_returns_404</td>
+<td class="num">1 ms</td>
+<td class="num">2 ms</td>
+<td class="num">2.0x</td>
+<td class="num">364</td>
+</tr>
+<tr>
+<td>PublicAP</td>
+<td>test_unroutable_path_returns_404</td>
+<td class="num">1 ms</td>
+<td class="num">2 ms</td>
+<td class="num">2.0x</td>
+<td class="num">208</td>
+</tr>
+<tr>
+<td>VM-Deployment-and-Configuration</td>
+<td>test_sensitive_to_each_file</td>
+<td class="num">1 ms</td>
+<td class="num">2 ms</td>
+<td class="num">2.0x</td>
+<td class="num">126</td>
+</tr>
+<tr>
+<td>VM-Deployment-and-Configuration</td>
+<td>test_stable</td>
+<td class="num">1 ms</td>
+<td class="num">2 ms</td>
+<td class="num">2.0x</td>
+<td class="num">21</td>
+</tr>
+</tbody></table></div>
+<h2>What this record cannot tell you</h2>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Repository</th>
+<th class="num">Observations</th>
+<th class="num">With steps</th>
+<th class="num">With assigned ID</th>
+<th>Formats</th>
+</tr></thead><tbody>
+<tr>
+<td>CountryWeather</td>
+<td class="num">1519</td>
+<td class="num">1519</td>
+<td class="num">0</td>
+<td>allure_report</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td class="num">3355</td>
+<td class="num">3355</td>
+<td class="num">0</td>
+<td>allure_raw,allure_report</td>
+</tr>
+<tr>
+<td>PublicAP</td>
+<td class="num">5136</td>
+<td class="num">0</td>
+<td class="num">0</td>
+<td>junit</td>
+</tr>
+<tr>
+<td>VM-Deployment-and-Configuration</td>
+<td class="num">3248</td>
+<td class="num">273</td>
+<td class="num">0</td>
+<td>allure_raw</td>
+</tr>
+</tbody></table></div>
+<p>Assigned IDs are zero everywhere because every row here predates them. The scheme is live in all four suites now, so rows gathered from the next run onward will carry one; these never can, which is why reports key on <code>COALESCE(test_id, test_uid)</code>.</p>
+<p>Step coverage is uneven by format, not by choice: JUnit cannot express steps at all, and Allure records them only where a suite used <code>allure.step</code>. A step-level statistic computed over the whole corpus would silently describe the subset that has them.</p>
+<p><strong>1 absence(s) recorded as <code>not_run</code>.</strong> A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.</p>
+<h2>Artifacts that yielded nothing</h2>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Repository</th>
+<th class="num">Run</th>
+<th>Artifact</th>
+<th>Reason</th>
+<th>Created</th>
+<th>Run outcome</th>
+</tr></thead><tbody>
+<tr>
+<td>CountryWeather</td>
+<td class="num">26206359194</td>
+<td>qa-artifacts</td>
+<td>no_members_matched</td>
+<td>2026-05-21</td>
+<td>failure</td>
+</tr>
+</tbody></table></div>
+<p>An expired artifact is routine. An artifact that exists while containing no results is not: the upload step ran, so the job believed it had something to publish. Each row records the pattern that missed and a sample of what the archive actually held, because a wrong glob and an empty report look identical from the outside and want opposite fixes.</p>
+<footer>
+<p>Generated 2026-08-17 06:18 UTC from the append-only record in
+<a href="https://github.com/apolskiy/PortfolioTestInsights">PortfolioTestInsights</a>. Every figure on this
+page is produced by <code>make site</code> from that record - nothing here is written
+by hand, so nothing here can drift away from its source.</p>
+</footer>
+</main>
+</body>
+</html>

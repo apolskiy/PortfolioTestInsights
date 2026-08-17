@@ -91,10 +91,34 @@ halfway through a repository leaves some of a run's rows written and some not.
 ### Make targets
 
 ```bash
+make db          # rebuild the derived SQLite index from data/
+make report      # render reports/insights.md from the index
+make site        # render docs/index.html, the published page
 make lint        # pylint over every tracked .py file, gated at 10.00/10
 make test        # unit tests against recorded fixtures, no network
 make clean       # remove caches; never touches data/
 ```
+
+**Only `make ingest` needs a token or a network.** `db`, `report` and `site`
+read nothing but `data/`, which is committed - so a fresh clone reproduces every
+published figure offline. That is the practical payoff of committing the record
+rather than keeping a database: the evidence travels with the repository.
+
+### Published automatically
+
+`.github/workflows/insights.yml` runs daily: ingest, rebuild, regenerate, and
+commit **only if the record or the report body actually changed**. The page is
+rewritten on every run and would otherwise differ by its timestamp alone, which
+would fill the history with commits that say nothing.
+
+The page is generated, never hand-written, and that is the point rather than a
+convenience. A hand-maintained statistics page states figures nobody re-checks,
+so it rots the first time the data moves - which is the exact defect this
+project exists to notice. A generated page cannot disagree with its source,
+because it holds no independent copy of it.
+
+> **Setup:** enable Pages on this repository with source `main` / `/docs`, and
+> add the `PORTFOLIO_READ_TOKEN` secret described above.
 
 ---
 
@@ -202,6 +226,12 @@ directory at all. The report shell was generated over zero results.
   `test_id` stays nullable and reports key on `COALESCE(test_id, test_uid)`,
   with `test_uid` remaining the join that stitches pre-ID history to post-ID
   history.
-* **No derived index or reports yet.** v0.1.0 is ingestion only. That ordering
-  was deliberate: CountryWeather's oldest artifacts expired three days after the
-  first backfill, and everything except the data could be built later.
+* **Same-input evidence is narrow, and the report says so.** The only place the
+  same commit runs more than once is PublicAP's four-leg matrix, and no suite
+  reruns a failure. So "no test disagreed with itself" is a true statement about
+  a small window, not a clean bill of health, and the report prints that caveat
+  next to the result rather than leaving a reader to infer it.
+
+* **Volatility is a signal, not a verdict.** A test that broke and was fixed
+  flips exactly as often as one that is genuinely unstable. Only the same-input
+  section can tell them apart, and today it is nearly empty.

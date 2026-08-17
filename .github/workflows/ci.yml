@@ -7,10 +7,10 @@ name: PortfolioTestInsights CI
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'LICENSE', '.gitignore', '.idea/**', 'data/**']
+    paths-ignore: ['**.md', 'LICENSE', '.gitignore', '.idea/**', 'data/**', 'docs/**', 'reports/**']
   pull_request:
     branches: [main]
-    paths-ignore: ['**.md', 'LICENSE', '.gitignore', '.idea/**', 'data/**']
+    paths-ignore: ['**.md', 'LICENSE', '.gitignore', '.idea/**', 'data/**', 'docs/**', 'reports/**']
   workflow_dispatch:
 
 # `data/**` is ignored above because an ingestion commit changes only the

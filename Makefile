@@ -12,13 +12,16 @@ PYTHON ?= python
 # `make ingest` and `make clean` do not shell out to git for nothing.
 PY_FILES = $(shell git ls-files '*.py')
 
-.PHONY: help lint test ingest ingest-dry clean
+.PHONY: help lint test ingest ingest-dry db report site clean
 
 help:
 	@echo "make lint        - pylint over every tracked .py file, gated at 10.00/10"
 	@echo "make test        - unit tests against recorded fixtures, no network"
 	@echo "make ingest      - pull new CI artifacts into the durable record"
 	@echo "make ingest-dry  - parse everything, write nothing"
+	@echo "make db          - rebuild the derived SQLite index from data/"
+	@echo "make report      - render the Markdown report from the index"
+	@echo "make site        - render the published HTML page from the index"
 	@echo "make clean       - remove caches and build output"
 
 lint:
@@ -44,6 +47,19 @@ ingest:
 
 ingest-dry:
 	@$(PYTHON) -m collector.ingest --dry-run
+
+# db and report read only data/ - no token, no network. A fresh clone of this
+# repository can reproduce every published figure offline, because the durable
+# record travels with the repository rather than living in an artifact that
+# expires.
+db:
+	@$(PYTHON) -m collector.index
+
+report: db
+	@$(PYTHON) -m collector.reports --out reports/insights.md
+
+site: db
+	@$(PYTHON) -m collector.reports --html docs/index.html
 
 clean:
 	@rm -rf .pytest_cache build
