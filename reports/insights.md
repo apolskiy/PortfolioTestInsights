@@ -5,7 +5,7 @@
 | Repository | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
 | CountryWeather | 41 | 17 | 1552 | 15 | 15 |
-| PlaywrightAPWebsiteAutomation | 65 | 41 | 3595 | 21 | 21 |
+| PlaywrightAPWebsiteAutomation | 66 | 41 | 3679 | 21 | 21 |
 | PublicAP | 14 | 36 | 5568 | 0 | 0 |
 | VM-Deployment-and-Configuration | 22 | 140 | 3422 | 0 | 0 |
 
@@ -49,16 +49,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repository | Test | Flips | Observations |
 |---|---|---:|---:|
-| PlaywrightAPWebsiteAutomation | PAWA_10034 | 7 | 30 |
-| PlaywrightAPWebsiteAutomation | PAWA_10033 | 7 | 30 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | 8 | 31 |
+| PlaywrightAPWebsiteAutomation | PAWA_10033 | 8 | 31 |
 | CountryWeather | CWA_10006 | 4 | 150 |
-| PlaywrightAPWebsiteAutomation | PAWA_10038 | 4 | 65 |
-| PlaywrightAPWebsiteAutomation | PAWA_10035 | 4 | 65 |
+| PlaywrightAPWebsiteAutomation | PAWA_10038 | 4 | 66 |
+| PlaywrightAPWebsiteAutomation | PAWA_10035 | 4 | 66 |
 | CountryWeather | CWA_10009 | 2 | 250 |
 | CountryWeather | CWA_10001 | 2 | 250 |
-| PlaywrightAPWebsiteAutomation | PAWA_10031 | 2 | 209 |
-| PlaywrightAPWebsiteAutomation | PAWA_10028 | 2 | 209 |
-| PlaywrightAPWebsiteAutomation | PAWA_10039 | 2 | 65 |
+| PlaywrightAPWebsiteAutomation | PAWA_10031 | 2 | 215 |
+| PlaywrightAPWebsiteAutomation | PAWA_10028 | 2 | 215 |
+| PlaywrightAPWebsiteAutomation | PAWA_10039 | 2 | 66 |
 
 ## Duration
 
@@ -66,10 +66,10 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 
 | Repository | Test | Median | p95 | p95/median | Runs |
 |---|---|---:|---:|---:|---:|
-| PlaywrightAPWebsiteAutomation | PAWA_10002 | 71 ms | 269 ms | 3.8x | 115 |
+| PlaywrightAPWebsiteAutomation | PAWA_10002 | 70 ms | 269 ms | 3.8x | 118 |
 | PublicAP | PAP_10031 | 1 ms | 3 ms | 3.0x | 56 |
-| PlaywrightAPWebsiteAutomation | PAWA_10001 | 118 ms | 312 ms | 2.6x | 115 |
-| PlaywrightAPWebsiteAutomation | PAWA_10034 | 86 ms | 204 ms | 2.4x | 26 |
+| PlaywrightAPWebsiteAutomation | PAWA_10001 | 116 ms | 312 ms | 2.7x | 118 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | 86 ms | 204 ms | 2.4x | 27 |
 | VM-Deployment-and-Configuration | VMD_10103 | 21 ms | 49 ms | 2.3x | 19 |
 | PublicAP | PAP_10028 | 1 ms | 2 ms | 2.0x | 392 |
 | PublicAP | PAP_10029 | 1 ms | 2 ms | 2.0x | 224 |
@@ -82,7 +82,7 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 | Repository | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
-| PlaywrightAPWebsiteAutomation | 3595 | 3595 | 240 | allure_raw,allure_report |
+| PlaywrightAPWebsiteAutomation | 3679 | 3679 | 324 | allure_raw,allure_report |
 | PublicAP | 5568 | 0 | 432 | junit |
 | VM-Deployment-and-Configuration | 3422 | 286 | 174 | allure_raw |
 
