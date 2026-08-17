@@ -57,33 +57,33 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 </tr></thead><tbody>
 <tr>
 <td>CountryWeather</td>
-<td class="num">40</td>
-<td class="num">17</td>
-<td class="num">1519</td>
-<td class="num">12</td>
-<td class="num">12</td>
+<td class="num">41</td>
+<td class="num">26</td>
+<td class="num">1552</td>
+<td class="num">15</td>
+<td class="num">15</td>
 </tr>
 <tr>
 <td>PlaywrightAPWebsiteAutomation</td>
-<td class="num">62</td>
-<td class="num">41</td>
-<td class="num">3355</td>
+<td class="num">64</td>
+<td class="num">81</td>
+<td class="num">3511</td>
 <td class="num">19</td>
 <td class="num">19</td>
 </tr>
 <tr>
 <td>PublicAP</td>
-<td class="num">13</td>
-<td class="num">36</td>
-<td class="num">5136</td>
+<td class="num">14</td>
+<td class="num">72</td>
+<td class="num">5568</td>
 <td class="num">0</td>
 <td class="num">0</td>
 </tr>
 <tr>
 <td>VM-Deployment-and-Configuration</td>
-<td class="num">21</td>
-<td class="num">140</td>
-<td class="num">3248</td>
+<td class="num">22</td>
+<td class="num">280</td>
+<td class="num">3422</td>
 <td class="num">0</td>
 <td class="num">0</td>
 </tr>
@@ -92,7 +92,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <p>None. Every test that ran more than once within a single workflow run - which today means PublicAP&#x27;s four-leg matrix, the only place the same commit is exercised more than once - agreed with itself every time.</p>
 <p>This is the strongest statement the data currently supports, and it is a narrow one. No suite reruns a failure, so a test that fails once and passes on retry would never be observed doing so. Absence of disagreement here is not evidence that no test is flaky; it is evidence that none disagreed across operating system and Python version.</p>
 <h2>Failures</h2>
-<p><strong>31 failing observations</strong> across 18 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.</p>
+<p><strong>34 failing observations</strong> across 21 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.</p>
 <div class="table-wrap">
 <table>
 <thead><tr>
@@ -168,6 +168,27 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <tr>
 <td>CountryWeather</td>
 <td>test_nonexistent_country_returns_empty</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_all_countries_population_integrity</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_germany_cross_reference_region</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CountryWeather</td>
+<td>test_germany_schema_validation</td>
 <td>broken</td>
 <td class="num">1</td>
 <td class="num">1</td>
@@ -405,30 +426,30 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 </tr></thead><tbody>
 <tr>
 <td>CountryWeather</td>
-<td class="num">1519</td>
-<td class="num">1519</td>
-<td class="num">0</td>
+<td class="num">1552</td>
+<td class="num">1552</td>
+<td class="num">33</td>
 <td>allure_report</td>
 </tr>
 <tr>
 <td>PlaywrightAPWebsiteAutomation</td>
-<td class="num">3355</td>
-<td class="num">3355</td>
-<td class="num">0</td>
+<td class="num">3511</td>
+<td class="num">3511</td>
+<td class="num">156</td>
 <td>allure_raw,allure_report</td>
 </tr>
 <tr>
 <td>PublicAP</td>
-<td class="num">5136</td>
+<td class="num">5568</td>
 <td class="num">0</td>
-<td class="num">0</td>
+<td class="num">432</td>
 <td>junit</td>
 </tr>
 <tr>
 <td>VM-Deployment-and-Configuration</td>
-<td class="num">3248</td>
-<td class="num">273</td>
-<td class="num">0</td>
+<td class="num">3422</td>
+<td class="num">286</td>
+<td class="num">174</td>
 <td>allure_raw</td>
 </tr>
 </tbody></table></div>
@@ -454,10 +475,42 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <td>2026-05-21</td>
 <td>failure</td>
 </tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td class="num">31999679216</td>
+<td>execution-reports</td>
+<td>no_members_matched</td>
+<td>2026-08-17</td>
+<td>failure</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td class="num">32000447197</td>
+<td>execution-reports</td>
+<td>no_members_matched</td>
+<td>2026-08-17</td>
+<td>failure</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td class="num">32000475911</td>
+<td>execution-reports</td>
+<td>no_members_matched</td>
+<td>2026-08-17</td>
+<td>failure</td>
+</tr>
+<tr>
+<td>PlaywrightAPWebsiteAutomation</td>
+<td class="num">32001067305</td>
+<td>execution-reports</td>
+<td>no_members_matched</td>
+<td>2026-08-17</td>
+<td>failure</td>
+</tr>
 </tbody></table></div>
 <p>An expired artifact is routine. An artifact that exists while containing no results is not: the upload step ran, so the job believed it had something to publish. Each row records the pattern that missed and a sample of what the archive actually held, because a wrong glob and an empty report look identical from the outside and want opposite fixes.</p>
 <footer>
-<p>Generated 2026-08-17 06:18 UTC from the append-only record in
+<p>Generated 2026-08-17 06:38 UTC from the append-only record in
 <a href="https://github.com/apolskiy/PortfolioTestInsights">PortfolioTestInsights</a>. Every figure on this
 page is produced by <code>make site</code> from that record - nothing here is written
 by hand, so nothing here can drift away from its source.</p>

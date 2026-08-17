@@ -4,10 +4,10 @@
 
 | Repository | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
-| CountryWeather | 40 | 17 | 1519 | 12 | 12 |
-| PlaywrightAPWebsiteAutomation | 62 | 41 | 3355 | 19 | 19 |
-| PublicAP | 13 | 36 | 5136 | 0 | 0 |
-| VM-Deployment-and-Configuration | 21 | 140 | 3248 | 0 | 0 |
+| CountryWeather | 41 | 26 | 1552 | 15 | 15 |
+| PlaywrightAPWebsiteAutomation | 64 | 81 | 3511 | 19 | 19 |
+| PublicAP | 14 | 72 | 5568 | 0 | 0 |
+| VM-Deployment-and-Configuration | 22 | 280 | 3422 | 0 | 0 |
 
 ## Same-input disagreement
 
@@ -17,7 +17,7 @@ This is the strongest statement the data currently supports, and it is a narrow 
 
 ## Failures
 
-**31 failing observations** across 18 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.
+**34 failing observations** across 21 distinct test/status pairs. Listed in full rather than charted: a few dozen events is a list, and plotting it would suggest a trend the data cannot support.
 
 | Repository | Test | Status | Count | With trace |
 |---|---|---|---:|---:|
@@ -31,6 +31,9 @@ This is the strongest statement the data currently supports, and it is a narrow 
 | CountryWeather | test_all_population_check | broken | 1 | 1 |
 | CountryWeather | test_country_by_name | failed | 1 | 1 |
 | CountryWeather | test_nonexistent_country_returns_empty | broken | 1 | 1 |
+| CountryWeather | test_all_countries_population_integrity | broken | 1 | 1 |
+| CountryWeather | test_germany_cross_reference_region | broken | 1 | 1 |
+| CountryWeather | test_germany_schema_validation | broken | 1 | 1 |
 | CountryWeather | test_nonexistent_country_returns_404 | failed | 1 | 1 |
 | CountryWeather | test_nonexistent_country_returns_empty | broken | 1 | 1 |
 | CountryWeather | test_forecast_by_city | broken | 1 | 1 |
@@ -78,10 +81,10 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 
 | Repository | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
-| CountryWeather | 1519 | 1519 | 0 | allure_report |
-| PlaywrightAPWebsiteAutomation | 3355 | 3355 | 0 | allure_raw,allure_report |
-| PublicAP | 5136 | 0 | 0 | junit |
-| VM-Deployment-and-Configuration | 3248 | 273 | 0 | allure_raw |
+| CountryWeather | 1552 | 1552 | 33 | allure_report |
+| PlaywrightAPWebsiteAutomation | 3511 | 3511 | 156 | allure_raw,allure_report |
+| PublicAP | 5568 | 0 | 432 | junit |
+| VM-Deployment-and-Configuration | 3422 | 286 | 174 | allure_raw |
 
 Assigned IDs are zero everywhere because every row here predates them. The scheme is live in all four suites now, so rows gathered from the next run onward will carry one; these never can, which is why reports key on `COALESCE(test_id, test_uid)`.
 
@@ -94,6 +97,10 @@ Step coverage is uneven by format, not by choice: JUnit cannot express steps at 
 | Repository | Run | Artifact | Reason | Created | Run outcome |
 |---|---:|---|---|---|---|
 | CountryWeather | 26206359194 | qa-artifacts | no_members_matched | 2026-05-21 | failure |
+| PlaywrightAPWebsiteAutomation | 31999679216 | execution-reports | no_members_matched | 2026-08-17 | failure |
+| PlaywrightAPWebsiteAutomation | 32000447197 | execution-reports | no_members_matched | 2026-08-17 | failure |
+| PlaywrightAPWebsiteAutomation | 32000475911 | execution-reports | no_members_matched | 2026-08-17 | failure |
+| PlaywrightAPWebsiteAutomation | 32001067305 | execution-reports | no_members_matched | 2026-08-17 | failure |
 
 An expired artifact is routine. An artifact that exists while containing no results is not: the upload step ran, so the job believed it had something to publish. Each row records the pattern that missed and a sample of what the archive actually held, because a wrong glob and an empty report look identical from the outside and want opposite fixes.
 

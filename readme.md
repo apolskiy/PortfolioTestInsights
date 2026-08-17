@@ -15,7 +15,7 @@ was being deleted on a rolling 90-day clock, because for public repositories 90
 days is GitHub's retention *maximum* and not merely its default. No setting
 prevents it; persisting the data elsewhere is the only mechanism there is.
 
-> **Documentation status:** describes **v0.1.0**, reviewed 2026-08-16.
+> **Documentation status:** describes **v0.2.0**, reviewed 2026-08-17.
 > Each section carries the release and date its content last changed, so a
 > reader arriving at a later version can see at a glance which parts moved. This
 > file always describes the *current* release; the reasoning behind the design,
@@ -25,7 +25,7 @@ prevents it; persisting the data elsewhere is the only mechanism there is.
 
 ## 1. What it collects
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 | Repository | Artifact | Format |
 |---|---|---|
@@ -46,7 +46,7 @@ have recovered a single historical run. See [DESIGN.md §4](DESIGN.md).
 
 ## 2. Setup
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 ### Prerequisites
 
@@ -73,7 +73,7 @@ remote URL.
 
 ## 3. Running it
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 ```bash
 make ingest                                  # pull anything new into the record
@@ -124,7 +124,7 @@ because it holds no independent copy of it.
 
 ## 4. Where the data goes
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 ```text
 data/
@@ -145,7 +145,7 @@ git.
 
 ## 5. Reporting and observability
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 **Failure diagnostics are captured, not summarized.** Every non-passing result
 carries both its message and its full stack trace, read from
@@ -184,7 +184,7 @@ directory at all. The report shell was generated over zero results.
 
 ## 6. Code standards
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 * **Pylint at a blocking 10.00/10**, matching CountryWeather and PublicAP.
   `make lint` is the same command CI runs, needs no token, and spends nothing.
@@ -210,7 +210,7 @@ directory at all. The report shell was generated over zero results.
 
 ## 7. Known limits
 
-<sub>v0.1.0 &middot; 2026-08-16</sub>
+<sub>v0.2.0 &middot; 2026-08-17</sub>
 
 * **`head_sha` does not identify the input for the site suite.** Half of
   PlaywrightAPWebsiteAutomation's runs are `repository_dispatch`, where the
