@@ -74,6 +74,33 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ### Fixed
 
+- **Another run's results were being attributed to the current run.**
+  `allure generate` merges a `history/` directory, so a generated report holds
+  the current run's results *and* retained entries from earlier runs, the latter
+  flagged `retry: true`. The parser read both, which recorded one test as having
+  passed *and* failed inside a single run id - with start timestamps six hours
+  apart. Found by reconciling the record against the index and noticing three
+  failing rows had gone missing: 200 keys held two rows, and the index's primary
+  key silently kept one.
+
+  Retained entries are now skipped, and the record was regenerated.
+  CountryWeather's observation count fell from 1,719 to 1,552 - the difference
+  was another run's history counted twice. Raw Allure results are written by the
+  run itself and carry no merged history, so only the report parser needs the
+  guard.
+
+- **Assigned IDs split each test's history instead of stitching it.** The index
+  keyed on `COALESCE(test_id, test_uid)`, so the moment the suites began
+  publishing IDs, every earlier row stayed keyed by uid while every later row
+  keyed by ID - and the inventory dutifully counted PublicAP's 36 tests as 72
+  and VM's 140 as 280. One long history became two short ones, which is the
+  precise failure the IDs were introduced to prevent.
+
+  An ID observed anywhere for a test now becomes that test's identity
+  everywhere, including on rows recorded before the ID existed. Uniqueness is
+  enforced while building the map: one ID claimed by two tests raises rather
+  than quietly averaging over two different tests.
+
 - **Same-input disagreement was counting different inputs as disagreement.** The
   first implementation grouped by `(repo, run_id, identity)`, which pooled every
   case of a parametrized test - so a run where the Germany case failed and the

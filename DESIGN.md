@@ -486,10 +486,12 @@ repository, never on workflow name.
 
 ### Credentials
 
-A **fine-grained PAT, read-only**: resource owner `apolskiy`, the five source
-repositories, permissions **Actions: read** and **Contents: read**. Stored as
-the `PORTFOLIO_READ_TOKEN` repository secret. The built-in `GITHUB_TOKEN` is
-scoped to this repository and cannot read another's artifacts.
+A **fine-grained PAT, read-only**: resource owner `apolskiy`, repository access
+limited to the four source repositories, permission **Actions: read** and
+nothing else. Stored as the `PORTFOLIO_READ_TOKEN` secret on this repository
+alone - the scope spans four repositories, the secret lives in one. The built-in
+`GITHUB_TOKEN` is scoped to the repository running the workflow and cannot read
+another's artifacts.
 
 The token is never printed, never written to a file, and never embedded in a
 remote URL. Downloading artifacts requires authentication even for public

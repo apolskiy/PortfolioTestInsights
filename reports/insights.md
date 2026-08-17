@@ -4,10 +4,10 @@
 
 | Repository | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
-| CountryWeather | 41 | 26 | 1552 | 15 | 15 |
-| PlaywrightAPWebsiteAutomation | 64 | 81 | 3511 | 19 | 19 |
-| PublicAP | 14 | 72 | 5568 | 0 | 0 |
-| VM-Deployment-and-Configuration | 22 | 280 | 3422 | 0 | 0 |
+| CountryWeather | 41 | 17 | 1552 | 15 | 15 |
+| PlaywrightAPWebsiteAutomation | 64 | 41 | 3511 | 19 | 19 |
+| PublicAP | 14 | 36 | 5568 | 0 | 0 |
+| VM-Deployment-and-Configuration | 22 | 140 | 3422 | 0 | 0 |
 
 ## Same-input disagreement
 
@@ -21,27 +21,27 @@ This is the strongest statement the data currently supports, and it is a narrow 
 
 | Repository | Test | Status | Count | With trace |
 |---|---|---|---:|---:|
-| CountryWeather | test_country_present_in_region | broken | 6 | 6 |
-| PlaywrightAPWebsiteAutomation | test_case_study_publishes_the_actual_suite_size | failed | 3 | 3 |
-| PlaywrightAPWebsiteAutomation | test_landing_page_publishes_the_actual_suite_size | failed | 3 | 3 |
-| PlaywrightAPWebsiteAutomation | test_profile_header_and_footer_persist_across_tabs | broken | 2 | 2 |
-| PlaywrightAPWebsiteAutomation | test_desktop_layout_has_no_horizontal_overflow | broken | 2 | 2 |
-| PlaywrightAPWebsiteAutomation | test_desktop_navigation_renders_on_a_single_row | failed | 2 | 2 |
-| PlaywrightAPWebsiteAutomation | test_mobile_navigation_wraps_onto_multiple_rows | failed | 2 | 2 |
-| CountryWeather | test_all_population_check | broken | 1 | 1 |
-| CountryWeather | test_country_by_name | failed | 1 | 1 |
-| CountryWeather | test_nonexistent_country_returns_empty | broken | 1 | 1 |
+| CountryWeather | CWA_10006 | broken | 6 | 6 |
+| PlaywrightAPWebsiteAutomation | PAWA_10033 | failed | 3 | 3 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | failed | 3 | 3 |
+| PlaywrightAPWebsiteAutomation | PAWA_10026 | broken | 2 | 2 |
+| PlaywrightAPWebsiteAutomation | PAWA_10035 | failed | 2 | 2 |
+| PlaywrightAPWebsiteAutomation | PAWA_10037 | broken | 2 | 2 |
+| PlaywrightAPWebsiteAutomation | PAWA_10038 | failed | 2 | 2 |
+| CountryWeather | CWA_10001 | failed | 1 | 1 |
+| CountryWeather | CWA_10005 | broken | 1 | 1 |
+| CountryWeather | CWA_10007 | broken | 1 | 1 |
+| CountryWeather | CWA_10009 | broken | 1 | 1 |
 | CountryWeather | test_all_countries_population_integrity | broken | 1 | 1 |
 | CountryWeather | test_germany_cross_reference_region | broken | 1 | 1 |
 | CountryWeather | test_germany_schema_validation | broken | 1 | 1 |
 | CountryWeather | test_nonexistent_country_returns_404 | failed | 1 | 1 |
 | CountryWeather | test_nonexistent_country_returns_empty | broken | 1 | 1 |
-| CountryWeather | test_forecast_by_city | broken | 1 | 1 |
-| PlaywrightAPWebsiteAutomation | test_home_panel_renders_the_skills_matrix | failed | 1 | 1 |
-| PlaywrightAPWebsiteAutomation | test_documentation_link_opens_in_a_hardened_new_tab | failed | 1 | 1 |
-| PlaywrightAPWebsiteAutomation | test_project_panel_publishes_a_documentation_link | failed | 1 | 1 |
-| PlaywrightAPWebsiteAutomation | test_desktop_skills_matrix_shows_column_headers | failed | 1 | 1 |
-| PlaywrightAPWebsiteAutomation | test_mobile_skills_matrix_hides_column_headers | failed | 1 | 1 |
+| PlaywrightAPWebsiteAutomation | PAWA_10027 | failed | 1 | 1 |
+| PlaywrightAPWebsiteAutomation | PAWA_10028 | failed | 1 | 1 |
+| PlaywrightAPWebsiteAutomation | PAWA_10031 | failed | 1 | 1 |
+| PlaywrightAPWebsiteAutomation | PAWA_10036 | failed | 1 | 1 |
+| PlaywrightAPWebsiteAutomation | PAWA_10039 | failed | 1 | 1 |
 
 ## Outcome volatility
 
@@ -49,16 +49,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repository | Test | Flips | Observations |
 |---|---|---:|---:|
-| PlaywrightAPWebsiteAutomation | test_landing_page_publishes_the_actual_suite_size | 6 | 27 |
-| PlaywrightAPWebsiteAutomation | test_case_study_publishes_the_actual_suite_size | 6 | 27 |
-| CountryWeather | test_country_present_in_region | 4 | 145 |
-| PlaywrightAPWebsiteAutomation | test_mobile_navigation_wraps_onto_multiple_rows | 4 | 62 |
-| PlaywrightAPWebsiteAutomation | test_desktop_navigation_renders_on_a_single_row | 4 | 62 |
-| CountryWeather | test_forecast_by_city | 2 | 245 |
-| CountryWeather | test_country_by_name | 2 | 245 |
-| PlaywrightAPWebsiteAutomation | test_project_panel_publishes_a_documentation_link | 2 | 191 |
-| PlaywrightAPWebsiteAutomation | test_documentation_link_opens_in_a_hardened_new_tab | 2 | 191 |
-| PlaywrightAPWebsiteAutomation | test_mobile_skills_matrix_hides_column_headers | 2 | 62 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | 6 | 29 |
+| PlaywrightAPWebsiteAutomation | PAWA_10033 | 6 | 29 |
+| CountryWeather | CWA_10006 | 4 | 150 |
+| PlaywrightAPWebsiteAutomation | PAWA_10038 | 4 | 64 |
+| PlaywrightAPWebsiteAutomation | PAWA_10035 | 4 | 64 |
+| CountryWeather | CWA_10009 | 2 | 250 |
+| CountryWeather | CWA_10001 | 2 | 250 |
+| PlaywrightAPWebsiteAutomation | PAWA_10031 | 2 | 203 |
+| PlaywrightAPWebsiteAutomation | PAWA_10028 | 2 | 203 |
+| PlaywrightAPWebsiteAutomation | PAWA_10039 | 2 | 64 |
 
 ## Duration
 
@@ -66,16 +66,16 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 
 | Repository | Test | Median | p95 | p95/median | Runs |
 |---|---|---:|---:|---:|---:|
-| PlaywrightAPWebsiteAutomation | test_route_loads_without_console_or_network_errors | 72 ms | 269 ms | 3.8x | 108 |
-| PublicAP | test_uninterpretable_delay_yields_the_sentinel | 1 ms | 3 ms | 3.0x | 100 |
-| PublicAP | test_aborted_requests_render_their_own_status | 1 ms | 3 ms | 3.0x | 52 |
-| PlaywrightAPWebsiteAutomation | test_route_responds_with_http_200 | 114 ms | 314 ms | 2.7x | 108 |
-| VM-Deployment-and-Configuration | test_volume_label | 21 ms | 49 ms | 2.3x | 18 |
-| PlaywrightAPWebsiteAutomation | test_case_study_publishes_the_actual_suite_size | 88 ms | 204 ms | 2.3x | 24 |
-| PublicAP | test_unsupported_code_returns_404 | 1 ms | 2 ms | 2.0x | 364 |
-| PublicAP | test_unroutable_path_returns_404 | 1 ms | 2 ms | 2.0x | 208 |
-| VM-Deployment-and-Configuration | test_sensitive_to_each_file | 1 ms | 2 ms | 2.0x | 126 |
-| VM-Deployment-and-Configuration | test_stable | 1 ms | 2 ms | 2.0x | 21 |
+| PlaywrightAPWebsiteAutomation | PAWA_10002 | 72 ms | 266 ms | 3.7x | 112 |
+| PublicAP | PAP_10031 | 1 ms | 3 ms | 3.0x | 56 |
+| PlaywrightAPWebsiteAutomation | PAWA_10001 | 114 ms | 312 ms | 2.7x | 112 |
+| PlaywrightAPWebsiteAutomation | PAWA_10034 | 86 ms | 204 ms | 2.4x | 26 |
+| VM-Deployment-and-Configuration | VMD_10103 | 21 ms | 49 ms | 2.3x | 19 |
+| PublicAP | PAP_10028 | 1 ms | 2 ms | 2.0x | 392 |
+| PublicAP | PAP_10029 | 1 ms | 2 ms | 2.0x | 224 |
+| VM-Deployment-and-Configuration | VMD_10131 | 1 ms | 2 ms | 2.0x | 132 |
+| PublicAP | PAP_10036 | 1 ms | 2 ms | 2.0x | 120 |
+| VM-Deployment-and-Configuration | VMD_10130 | 1 ms | 2 ms | 2.0x | 22 |
 
 ## What this record cannot tell you
 

@@ -3,7 +3,7 @@ Aleksandr Polskiy
 # PortfolioTestInsights
 
 A read-only collector that pulls test results out of the GitHub Actions
-artifacts of the portfolio's five repositories, normalizes three different
+artifacts of the portfolio's four test suites, normalizes three different
 per-test formats onto one schema, and keeps the combined history in a durable
 record that outlives GitHub's artifact retention.
 
@@ -59,9 +59,20 @@ Downloading artifacts requires authentication even for public repositories,
 which is the only reason a token is needed.
 
 * **CI**: a fine-grained PAT stored as `PORTFOLIO_READ_TOKEN`, resource owner
-  `apolskiy`, scoped to the four source repositories, permissions
-  **Actions: read** and **Contents: read**. Read-only by design - the collector
-  never writes to a source repository.
+  `apolskiy`, repository access limited to the four source repositories,
+  permission **Actions: read** and nothing else. (Fine-grained tokens always
+  carry `Metadata: read`; no further scope is required, because every endpoint
+  the collector calls is under `/actions/`.)
+
+  **Stored in this repository only.** The token's *scope* spans four
+  repositories, but the secret lives in exactly one - the repository whose
+  workflow makes the calls. The built-in `GITHUB_TOKEN` cannot substitute: it is
+  scoped to the repository running the workflow, so it cannot read another's
+  artifacts.
+
+  Read-only by design. The collector never writes to a source repository; the
+  commit `insights.yml` makes is to *this* repository, using the built-in token
+  under `permissions: contents: write`.
 * **Local**: the same variable, or nothing at all. With no variable set the
   client falls back to the locally authenticated `gh` CLI, so a developer who
   has already signed in needs no extra setup.

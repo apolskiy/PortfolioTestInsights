@@ -314,19 +314,34 @@ def _insert_runs(connection: sqlite3.Connection, runs: list[dict[str, Any]]) -> 
 def _insert_results(connection: sqlite3.Connection, results: list[dict[str, Any]]) -> None:
     """Insert result rows, computing the reporting identity for each.
 
-    ``identity`` is ``COALESCE(test_id, test_uid)``, materialized as a column so
-    every report groups the same way without repeating the expression. Rows
-    backfilled before assigned IDs existed fall back to ``test_uid``, which is
-    what stitches pre-ID history to post-ID history.
+    ``identity`` is materialized as a column so every report groups the same way
+    without repeating the expression - but it is **not** a plain
+    ``COALESCE(test_id, test_uid)``. That would split each test in two at the
+    moment assigned IDs arrived: every row before the change keyed by uid, every
+    row after keyed by ID, and a test with one long history counted as two with
+    short ones. Which is the exact failure the IDs were introduced to prevent.
+
+    Instead an ID observed anywhere for a ``test_uid`` becomes that test's
+    identity everywhere, including on rows recorded years before the ID existed.
+    That is what actually stitches pre-ID history to post-ID history, and it is
+    only sound because uniqueness is enforced: one ID never maps to two uids.
 
     Args:
         connection: Open database connection.
         results: Observed and synthesized result rows.
+
+    Raises:
+        ValueError: If one assigned ID is claimed by more than one test. A
+            duplicated ID merges two histories into one, which is harder to
+            notice than a fork because the row count still looks plausible, so
+            it fails the build rather than producing an average over two
+            different tests.
     """
+    assigned = _assigned_identities(results)
     payload = [
         {
             **row,
-            "identity": row.get("test_id") or row["test_uid"],
+            "identity": assigned.get(row["test_uid"], row["test_uid"]),
             "params": json.dumps(row.get("params") or {}, sort_keys=True),
             "labels": json.dumps(row.get("labels") or {}, sort_keys=True),
             "has_trace": int(bool(row.get("has_trace"))),
@@ -340,6 +355,36 @@ def _insert_results(connection: sqlite3.Connection, results: list[dict[str, Any]
         " :duration_ms, :message, :trace, :has_trace, :labels, :source_format, :has_steps)",
         payload,
     )
+
+
+def _assigned_identities(results: list[dict[str, Any]]) -> dict[str, str]:
+    """Map every test that has ever published an assigned ID to that ID.
+
+    Args:
+        results: Observed and synthesized result rows.
+
+    Returns:
+        ``test_uid`` to assigned ID, for the tests that carry one.
+
+    Raises:
+        ValueError: If one ID is claimed by more than one ``test_uid``.
+    """
+    by_uid: dict[str, str] = {}
+    claimants: dict[str, set[str]] = defaultdict(set)
+    for row in results:
+        test_id = row.get("test_id")
+        if not test_id:
+            continue
+        by_uid[row["test_uid"]] = test_id
+        claimants[test_id].add(row["test_uid"])
+
+    collisions = {
+        test_id: sorted(uids) for test_id, uids in claimants.items() if len(uids) > 1
+    }
+    if collisions:
+        detail = "; ".join(f"{test_id} -> {uids}" for test_id, uids in sorted(collisions.items()))
+        raise ValueError(f"Assigned test IDs must be unique per test. Collisions: {detail}")
+    return by_uid
 
 
 def _insert_steps(connection: sqlite3.Connection, results: list[dict[str, Any]]) -> None:
