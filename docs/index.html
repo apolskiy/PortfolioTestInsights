@@ -44,11 +44,46 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <body>
 <main>
 <h1>Portfolio Test Insights</h1>
+<h2>Repositories</h2>
+<p>Each code is the prefix of that suite&#x27;s assigned test IDs, so a code in any table agrees with the IDs printed beside it. The range shows which IDs that suite has actually published so far - a test recorded before the scheme existed carries none, and appears in the tables with <code>-</code> in its ID column.</p>
+<div class="table-wrap">
+<table>
+<thead><tr>
+<th>Code</th>
+<th>Repository</th>
+<th class="num">Tests</th>
+<th>Assigned IDs in use</th>
+</tr></thead><tbody>
+<tr>
+<td>CWA</td>
+<td>[apolskiy/CountryWeather](https://github.com/apolskiy/CountryWeather)</td>
+<td class="num">17</td>
+<td>CWA_10001 .. CWA_10009 (+8 without one)</td>
+</tr>
+<tr>
+<td>PAWA</td>
+<td>[apolskiy/PlaywrightAPWebsiteAutomation](https://github.com/apolskiy/PlaywrightAPWebsiteAutomation)</td>
+<td class="num">41</td>
+<td>PAWA_10001 .. PAWA_10042 (+1 without one)</td>
+</tr>
+<tr>
+<td>PAP</td>
+<td>[apolskiy/PublicAP](https://github.com/apolskiy/PublicAP)</td>
+<td class="num">36</td>
+<td>PAP_10007 .. PAP_10042</td>
+</tr>
+<tr>
+<td>VMD</td>
+<td>[apolskiy/VM-Deployment-and-Configuration](https://github.com/apolskiy/VM-Deployment-and-Configuration)</td>
+<td class="num">140</td>
+<td>VMD_10001 .. VMD_10140</td>
+</tr>
+</tbody></table></div>
 <h2>Inventory</h2>
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>Repository</th>
+<th>Repo</th>
 <th class="num">Runs</th>
 <th class="num">Tests</th>
 <th class="num">Observations</th>
@@ -56,7 +91,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <th class="num">With trace</th>
 </tr></thead><tbody>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td class="num">41</td>
 <td class="num">17</td>
 <td class="num">1552</td>
@@ -64,7 +99,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <td class="num">15</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td class="num">64</td>
 <td class="num">41</td>
 <td class="num">3511</td>
@@ -72,7 +107,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <td class="num">19</td>
 </tr>
 <tr>
-<td>PublicAP</td>
+<td>PAP</td>
 <td class="num">14</td>
 <td class="num">36</td>
 <td class="num">5568</td>
@@ -80,7 +115,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <td class="num">0</td>
 </tr>
 <tr>
-<td>VM-Deployment-and-Configuration</td>
+<td>VMD</td>
 <td class="num">22</td>
 <td class="num">140</td>
 <td class="num">3422</td>
@@ -96,155 +131,177 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>Repository</th>
+<th>Repo</th>
+<th>Test ID</th>
 <th>Test</th>
 <th>Status</th>
 <th class="num">Count</th>
 <th class="num">With trace</th>
 </tr></thead><tbody>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10006</td>
+<td>test_country_present_in_region</td>
 <td>broken</td>
 <td class="num">6</td>
 <td class="num">6</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10033</td>
+<td>test_landing_page_publishes_the_actual_suite_size</td>
 <td>failed</td>
 <td class="num">3</td>
 <td class="num">3</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10034</td>
+<td>test_case_study_publishes_the_actual_suite_size</td>
 <td>failed</td>
 <td class="num">3</td>
 <td class="num">3</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10026</td>
+<td>test_profile_header_and_footer_persist_across_tabs</td>
 <td>broken</td>
 <td class="num">2</td>
 <td class="num">2</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10035</td>
+<td>test_desktop_navigation_renders_on_a_single_row</td>
 <td>failed</td>
 <td class="num">2</td>
 <td class="num">2</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10037</td>
+<td>test_desktop_layout_has_no_horizontal_overflow</td>
 <td>broken</td>
 <td class="num">2</td>
 <td class="num">2</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10038</td>
+<td>test_mobile_navigation_wraps_onto_multiple_rows</td>
 <td>failed</td>
 <td class="num">2</td>
 <td class="num">2</td>
 </tr>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10001</td>
+<td>test_country_by_name</td>
 <td>failed</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10005</td>
+<td>test_all_population_check</td>
 <td>broken</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10007</td>
-<td>broken</td>
-<td class="num">1</td>
-<td class="num">1</td>
-</tr>
-<tr>
-<td>CountryWeather</td>
-<td>CWA_10009</td>
-<td>broken</td>
-<td class="num">1</td>
-<td class="num">1</td>
-</tr>
-<tr>
-<td>CountryWeather</td>
-<td>test_all_countries_population_integrity</td>
-<td>broken</td>
-<td class="num">1</td>
-<td class="num">1</td>
-</tr>
-<tr>
-<td>CountryWeather</td>
-<td>test_germany_cross_reference_region</td>
-<td>broken</td>
-<td class="num">1</td>
-<td class="num">1</td>
-</tr>
-<tr>
-<td>CountryWeather</td>
-<td>test_germany_schema_validation</td>
-<td>broken</td>
-<td class="num">1</td>
-<td class="num">1</td>
-</tr>
-<tr>
-<td>CountryWeather</td>
-<td>test_nonexistent_country_returns_404</td>
-<td>failed</td>
-<td class="num">1</td>
-<td class="num">1</td>
-</tr>
-<tr>
-<td>CountryWeather</td>
 <td>test_nonexistent_country_returns_empty</td>
 <td>broken</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>CWA</td>
+<td>CWA_10009</td>
+<td>test_forecast_by_city</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CWA</td>
+<td>-</td>
+<td>test_all_countries_population_integrity</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CWA</td>
+<td>-</td>
+<td>test_germany_cross_reference_region</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CWA</td>
+<td>-</td>
+<td>test_germany_schema_validation</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CWA</td>
+<td>-</td>
+<td>test_nonexistent_country_returns_404</td>
+<td>failed</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>CWA</td>
+<td>-</td>
+<td>test_nonexistent_country_returns_empty</td>
+<td>broken</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<td>PAWA</td>
 <td>PAWA_10027</td>
+<td>test_home_panel_renders_the_skills_matrix</td>
 <td>failed</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10028</td>
+<td>test_project_panel_publishes_a_documentation_link</td>
 <td>failed</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10031</td>
+<td>test_documentation_link_opens_in_a_hardened_new_tab</td>
 <td>failed</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10036</td>
+<td>test_desktop_skills_matrix_shows_column_headers</td>
 <td>failed</td>
 <td class="num">1</td>
 <td class="num">1</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10039</td>
+<td>test_mobile_skills_matrix_hides_column_headers</td>
 <td>failed</td>
 <td class="num">1</td>
 <td class="num">1</td>
@@ -255,68 +312,79 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>Repository</th>
+<th>Repo</th>
+<th>Test ID</th>
 <th>Test</th>
 <th class="num">Flips</th>
 <th class="num">Observations</th>
 </tr></thead><tbody>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10034</td>
+<td>test_case_study_publishes_the_actual_suite_size</td>
 <td class="num">6</td>
 <td class="num">29</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10033</td>
+<td>test_landing_page_publishes_the_actual_suite_size</td>
 <td class="num">6</td>
 <td class="num">29</td>
 </tr>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10006</td>
+<td>test_country_present_in_region</td>
 <td class="num">4</td>
 <td class="num">150</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10038</td>
+<td>test_mobile_navigation_wraps_onto_multiple_rows</td>
 <td class="num">4</td>
 <td class="num">64</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10035</td>
+<td>test_desktop_navigation_renders_on_a_single_row</td>
 <td class="num">4</td>
 <td class="num">64</td>
 </tr>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10009</td>
+<td>test_forecast_by_city</td>
 <td class="num">2</td>
 <td class="num">250</td>
 </tr>
 <tr>
-<td>CountryWeather</td>
+<td>CWA</td>
 <td>CWA_10001</td>
+<td>test_country_by_name</td>
 <td class="num">2</td>
 <td class="num">250</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10031</td>
+<td>test_documentation_link_opens_in_a_hardened_new_tab</td>
 <td class="num">2</td>
 <td class="num">203</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10028</td>
+<td>test_project_panel_publishes_a_documentation_link</td>
 <td class="num">2</td>
 <td class="num">203</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10039</td>
+<td>test_mobile_skills_matrix_hides_column_headers</td>
 <td class="num">2</td>
 <td class="num">64</td>
 </tr>
@@ -326,7 +394,8 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>Repository</th>
+<th>Repo</th>
+<th>Test ID</th>
 <th>Test</th>
 <th class="num">Median</th>
 <th class="num">p95</th>
@@ -334,80 +403,90 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <th class="num">Runs</th>
 </tr></thead><tbody>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10002</td>
+<td>test_route_loads_without_console_or_network_errors</td>
 <td class="num">72 ms</td>
 <td class="num">266 ms</td>
 <td class="num">3.7x</td>
 <td class="num">112</td>
 </tr>
 <tr>
-<td>PublicAP</td>
+<td>PAP</td>
 <td>PAP_10031</td>
+<td>test_aborted_requests_render_their_own_status</td>
 <td class="num">1 ms</td>
 <td class="num">3 ms</td>
 <td class="num">3.0x</td>
 <td class="num">56</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10001</td>
+<td>test_route_responds_with_http_200</td>
 <td class="num">114 ms</td>
 <td class="num">312 ms</td>
 <td class="num">2.7x</td>
 <td class="num">112</td>
 </tr>
 <tr>
-<td>PlaywrightAPWebsiteAutomation</td>
+<td>PAWA</td>
 <td>PAWA_10034</td>
+<td>test_case_study_publishes_the_actual_suite_size</td>
 <td class="num">86 ms</td>
 <td class="num">204 ms</td>
 <td class="num">2.4x</td>
 <td class="num">26</td>
 </tr>
 <tr>
-<td>VM-Deployment-and-Configuration</td>
+<td>VMD</td>
 <td>VMD_10103</td>
+<td>test_volume_label</td>
 <td class="num">21 ms</td>
 <td class="num">49 ms</td>
 <td class="num">2.3x</td>
 <td class="num">19</td>
 </tr>
 <tr>
-<td>PublicAP</td>
+<td>PAP</td>
 <td>PAP_10028</td>
+<td>test_unsupported_code_returns_404</td>
 <td class="num">1 ms</td>
 <td class="num">2 ms</td>
 <td class="num">2.0x</td>
 <td class="num">392</td>
 </tr>
 <tr>
-<td>PublicAP</td>
+<td>PAP</td>
 <td>PAP_10029</td>
+<td>test_unroutable_path_returns_404</td>
 <td class="num">1 ms</td>
 <td class="num">2 ms</td>
 <td class="num">2.0x</td>
 <td class="num">224</td>
 </tr>
 <tr>
-<td>VM-Deployment-and-Configuration</td>
+<td>VMD</td>
 <td>VMD_10131</td>
+<td>test_sensitive_to_each_file</td>
 <td class="num">1 ms</td>
 <td class="num">2 ms</td>
 <td class="num">2.0x</td>
 <td class="num">132</td>
 </tr>
 <tr>
-<td>PublicAP</td>
+<td>PAP</td>
 <td>PAP_10036</td>
+<td>test_uninterpretable_delay_yields_the_sentinel</td>
 <td class="num">1 ms</td>
 <td class="num">2 ms</td>
 <td class="num">2.0x</td>
 <td class="num">120</td>
 </tr>
 <tr>
-<td>VM-Deployment-and-Configuration</td>
+<td>VMD</td>
 <td>VMD_10130</td>
+<td>test_stable</td>
 <td class="num">1 ms</td>
 <td class="num">2 ms</td>
 <td class="num">2.0x</td>
@@ -418,7 +497,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>Repository</th>
+<th>Repo</th>
 <th class="num">Observations</th>
 <th class="num">With steps</th>
 <th class="num">With assigned ID</th>
@@ -460,7 +539,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <div class="table-wrap">
 <table>
 <thead><tr>
-<th>Repository</th>
+<th>Repo</th>
 <th class="num">Run</th>
 <th>Artifact</th>
 <th>Reason</th>
@@ -510,7 +589,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 </tbody></table></div>
 <p>An expired artifact is routine. An artifact that exists while containing no results is not: the upload step ran, so the job believed it had something to publish. Each row records the pattern that missed and a sample of what the archive actually held, because a wrong glob and an empty report look identical from the outside and want opposite fixes.</p>
 <footer>
-<p>Generated 2026-08-17 06:39 UTC from the append-only record in
+<p>Generated 2026-08-17 07:33 UTC from the append-only record in
 <a href="https://github.com/apolskiy/PortfolioTestInsights">PortfolioTestInsights</a>. Every figure on this
 page is produced by <code>make site</code> from that record - nothing here is written
 by hand, so nothing here can drift away from its source.</p>

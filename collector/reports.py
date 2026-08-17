@@ -28,6 +28,7 @@ import sys
 from pathlib import Path
 from typing import Final
 
+from collector.config import load_sources
 from collector.index import DEFAULT_INDEX_PATH
 from collector.render import render_page
 
@@ -90,6 +91,40 @@ def _percentile(values: list[float], fraction: float) -> float:
     return ordered[rank]
 
 
+#: Printed where a test has no assigned ID, which is every row recorded before
+#: the scheme existed.
+NO_ID: Final[str] = "-"
+
+
+def repo_codes() -> dict[str, str]:
+    """Map each repository to the short code its assigned test IDs already use.
+
+    Spelling `VM-Deployment-and-Configuration` in every row of every table costs
+    a third of the width and tells the reader nothing they do not learn once.
+    The suites already carry a short code per repository - the prefix of their
+    assigned IDs - so reusing it keeps the tables narrow and makes the column
+    agree with the IDs beside it instead of being a second naming scheme.
+
+    Returns:
+        Owner-qualified repository name to short code. Repositories missing from
+        the configuration fall back to their bare name.
+    """
+    return {source.repo: source.prefix for source in load_sources()}
+
+
+def _code(repo: str, codes: dict[str, str]) -> str:
+    """Render one repository cell.
+
+    Args:
+        repo: Owner-qualified repository name.
+        codes: Lookup from :func:`repo_codes`.
+
+    Returns:
+        The short code, or the bare repository name when none is configured.
+    """
+    return codes.get(repo, repo.split("/")[-1])
+
+
 def _short(identity: str) -> str:
     """Trim a repo-qualified identity down to something a table can hold.
 
@@ -105,6 +140,101 @@ def _short(identity: str) -> str:
     return identity.rsplit("::", 1)[-1]
 
 
+def test_labels(connection: sqlite3.Connection) -> dict[tuple[str, str], tuple[str, str]]:
+    """Map each identity to the ID and the test name a reader needs to see.
+
+    An assigned ID is the right key and the wrong label. ``PAWA_10020`` is
+    stable across renames, which is exactly why it carries no meaning - so a
+    report that printed only the ID would send every reader to the source to
+    find out which test it is. Under a test-management system the ID would
+    resolve to a title; there is no such system here, and the report should not
+    assume one.
+
+    Both are therefore published side by side: the ID to cite and track, the
+    name to read.
+
+    Args:
+        connection: Open index connection.
+
+    Returns:
+        ``(repo, identity)`` to ``(test id or '-', test name)``.
+    """
+    labels: dict[tuple[str, str], tuple[str, str]] = {}
+    query = """
+        SELECT repo, identity, MAX(test_id), MAX(test_name)
+        FROM results GROUP BY repo, identity
+    """
+    for repo, identity, test_id, test_name in connection.execute(query):
+        labels[(repo, identity)] = (test_id or NO_ID, test_name or _short(identity))
+    return labels
+
+
+def _cells(repo: str, identity: str, labels: dict[tuple[str, str], tuple[str, str]]) -> str:
+    """Render the two identity columns for one row.
+
+    Args:
+        repo: Owning repository.
+        identity: The row's grouping identity.
+        labels: Lookup from :func:`test_labels`.
+
+    Returns:
+        Two pipe-separated table cells: assigned ID, then test name.
+    """
+    test_id, test_name = labels.get((repo, identity), (NO_ID, _short(identity)))
+    return f"{test_id} | {test_name}"
+
+
+def repositories(connection: sqlite3.Connection) -> list[str]:
+    """Publish the code-to-repository mapping as a legend, once.
+
+    Every table below cites a repository by its short code, so the expansion
+    belongs somewhere a reader meets before the first of them - and somewhere
+    that is a lookup rather than a measurement. Folding it into the inventory
+    table would widen a statistics table to carry a two-column fact, and bury
+    the one row a reader is scanning for behind four numeric columns.
+
+    Args:
+        connection: Open index connection, used only to list the repositories
+            the record actually holds - a configured source that has never been
+            collected does not belong in a legend for this report.
+
+    Returns:
+        Report lines.
+    """
+    codes = repo_codes()
+    lines = ["## Repositories", ""]
+    lines.append(
+        "Each code is the prefix of that suite's assigned test IDs, so a code in any "
+        "table agrees with the IDs printed beside it. The range shows which IDs that "
+        "suite has actually published so far - a test recorded before the scheme "
+        "existed carries none, and appears in the tables with `-` in its ID column."
+    )
+    lines.append("")
+    lines.append("| Code | Repository | Tests | Assigned IDs in use |")
+    lines.append("|---|---|---:|---|")
+    # Collapse to one row per test first. A test's assigned ID lives on the rows
+    # recorded since the scheme existed; its older rows still carry NULL, so
+    # counting NULLs directly would report every test as unassigned.
+    query = """
+        SELECT repo, COUNT(*), MIN(assigned), MAX(assigned), SUM(assigned IS NULL)
+        FROM (
+            SELECT repo, identity, MAX(test_id) AS assigned
+            FROM results GROUP BY repo, identity
+        )
+        GROUP BY repo ORDER BY repo
+    """
+    for repo, tests, lowest, highest, unassigned in connection.execute(query):
+        if lowest and highest:
+            span = lowest if lowest == highest else f"{lowest} .. {highest}"
+            if unassigned:
+                span += f" (+{unassigned} without one)"
+        else:
+            span = "none published yet"
+        link = f"[{repo}](https://github.com/{repo})"
+        lines.append(f"| {_code(repo, codes)} | {link} | {tests} | {span} |")
+    return lines + [""]
+
+
 def inventory(connection: sqlite3.Connection) -> list[str]:
     """Summarize what the record holds, per repository.
 
@@ -115,7 +245,8 @@ def inventory(connection: sqlite3.Connection) -> list[str]:
         Report lines.
     """
     lines = ["## Inventory", ""]
-    lines.append("| Repository | Runs | Tests | Observations | Failures | With trace |")
+    codes = repo_codes()
+    lines.append("| Repo | Runs | Tests | Observations | Failures | With trace |")
     lines.append("|---|---:|---:|---:|---:|---:|")
     query = """
         SELECT repo,
@@ -128,7 +259,8 @@ def inventory(connection: sqlite3.Connection) -> list[str]:
     """
     for repo, runs, tests, observed, failures, traced in connection.execute(query):
         lines.append(
-            f"| {repo.split('/')[-1]} | {runs} | {tests} | {observed} | {failures} | {traced} |"
+            f"| {_code(repo, codes)} | {runs} | {tests} | "
+            f"{observed} | {failures} | {traced} |"
         )
     return lines + [""]
 
@@ -177,10 +309,15 @@ def same_input_disagreement(connection: sqlite3.Connection) -> list[str]:
         )
         return lines + [""]
 
-    lines.append("| Repository | Run | Test | Statuses |")
-    lines.append("|---|---:|---|---|")
+    labels = test_labels(connection)
+    codes = repo_codes()
+    lines.append("| Repo | Run | Test ID | Test | Statuses |")
+    lines.append("|---|---:|---|---|---|")
     for repo, run_id, identity, _variants, statuses in rows:
-        lines.append(f"| {repo.split('/')[-1]} | {run_id} | {_short(identity)} | {statuses} |")
+        lines.append(
+            f"| {_code(repo, codes)} | {run_id} | {_cells(repo, identity, labels)} | "
+            f"{statuses} |"
+        )
     return lines + [""]
 
 
@@ -224,10 +361,15 @@ def volatility(connection: sqlite3.Connection) -> list[str]:
         "above can tell them apart."
     )
     lines.append("")
-    lines.append("| Repository | Test | Flips | Observations |")
-    lines.append("|---|---|---:|---:|")
+    labels = test_labels(connection)
+    codes = repo_codes()
+    lines.append("| Repo | Test ID | Test | Flips | Observations |")
+    lines.append("|---|---|---|---:|---:|")
     for flips, observations, repo, identity in ranked[:TOP_N]:
-        lines.append(f"| {repo.split('/')[-1]} | {_short(identity)} | {flips} | {observations} |")
+        lines.append(
+            f"| {_code(repo, codes)} | {_cells(repo, identity, labels)} | {flips} | "
+            f"{observations} |"
+        )
     return lines + [""]
 
 
@@ -270,11 +412,13 @@ def duration_drift(connection: sqlite3.Connection) -> list[str]:
         "are usually fast and occasionally are not."
     )
     lines.append("")
-    lines.append("| Repository | Test | Median | p95 | p95/median | Runs |")
-    lines.append("|---|---|---:|---:|---:|---:|")
+    labels = test_labels(connection)
+    codes = repo_codes()
+    lines.append("| Repo | Test ID | Test | Median | p95 | p95/median | Runs |")
+    lines.append("|---|---|---|---:|---:|---:|---:|")
     for ratio, median, tail, count, repo, identity in ranked[:TOP_N]:
         lines.append(
-            f"| {repo.split('/')[-1]} | {_short(identity)} | {median:.0f} ms | "
+            f"| {_code(repo, codes)} | {_cells(repo, identity, labels)} | {median:.0f} ms | "
             f"{tail:.0f} ms | {ratio:.1f}x | {count} |"
         )
     return lines + [""]
@@ -308,11 +452,14 @@ def failure_inventory(connection: sqlite3.Connection) -> list[str]:
         "plotting it would suggest a trend the data cannot support."
     )
     lines.append("")
-    lines.append("| Repository | Test | Status | Count | With trace |")
-    lines.append("|---|---|---|---:|---:|")
+    labels = test_labels(connection)
+    codes = repo_codes()
+    lines.append("| Repo | Test ID | Test | Status | Count | With trace |")
+    lines.append("|---|---|---|---|---:|---:|")
     for repo, identity, status, hits, traced in rows:
         lines.append(
-            f"| {repo.split('/')[-1]} | {_short(identity)} | {status} | {hits} | {traced} |"
+            f"| {_code(repo, codes)} | {_cells(repo, identity, labels)} | {status} | "
+            f"{hits} | {traced} |"
         )
     return lines + [""]
 
@@ -327,7 +474,7 @@ def coverage_gaps(connection: sqlite3.Connection) -> list[str]:
         Report lines.
     """
     lines = ["## What this record cannot tell you", ""]
-    lines.append("| Repository | Observations | With steps | With assigned ID | Formats |")
+    lines.append("| Repo | Observations | With steps | With assigned ID | Formats |")
     lines.append("|---|---:|---:|---:|---|")
     query = """
         SELECT repo, COUNT(*), SUM(has_steps), SUM(test_id IS NOT NULL),
@@ -386,7 +533,7 @@ def anomalies(connection: sqlite3.Connection) -> list[str]:
         lines.append("None recorded.")
         return lines + [""]
 
-    lines.append("| Repository | Run | Artifact | Reason | Created | Run outcome |")
+    lines.append("| Repo | Run | Artifact | Reason | Created | Run outcome |")
     lines.append("|---|---:|---|---|---|---|")
     for repo, run_id, name, reason, created, conclusion, _detail in rows:
         lines.append(
@@ -417,6 +564,7 @@ def build_report(index_path: Path) -> str:
     try:
         sections: list[list[str]] = [
             ["# Portfolio Test Insights", ""],
+            repositories(connection),
             inventory(connection),
             same_input_disagreement(connection),
             failure_inventory(connection),
