@@ -194,11 +194,14 @@ directory at all. The report shell was generated over zero results.
   flakiness query keyed on it would report real site regressions as flakes, so
   `sut_version` is recorded separately and left null when it cannot be resolved.
   Resolving it retroactively is the next substantial piece of work.
-* **Assigned test IDs are not in the data yet.** Identity currently derives from
-  `fullName`, which forks history when a test is renamed. The `test_id` column
-  exists and is read from Allure labels and JUnit properties, but no suite
-  publishes one yet; backfilled history never can, so `test_id` is nullable and
-  reports key on `COALESCE(test_id, test_uid)`.
+* **Assigned test IDs reach the data from 2026-08-16 onward, never before.** All
+  four suites now publish one - `PAWA_*`, `CWA_*`, `PAP_*`, `VMD_*` - as an
+  Allure label and a JUnit property, and both parsers read it. But the 13,458
+  rows already backfilled predate the scheme and can never carry one, because
+  the artifacts they came from are frozen and some have since expired. So
+  `test_id` stays nullable and reports key on `COALESCE(test_id, test_uid)`,
+  with `test_uid` remaining the join that stitches pre-ID history to post-ID
+  history.
 * **No derived index or reports yet.** v0.1.0 is ingestion only. That ordering
   was deliberate: CountryWeather's oldest artifacts expired three days after the
   first backfill, and everything except the data could be built later.
