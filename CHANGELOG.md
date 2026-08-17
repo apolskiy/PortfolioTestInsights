@@ -17,6 +17,74 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.3.0 - 2026-08-17
+
+### Added
+
+- **A duration error budget.** A run breaches when it exceeds a multiple of that
+  test's own baseline median; the budget allows a fraction of the trailing
+  window to breach before it is spent. Policy lives in `config/sources.yaml`.
+
+  The objective is **relative** by necessity: no suite here declares a per-test
+  duration SLA, so an absolute threshold would have to be seeded from this
+  history and then measured against it, which proves nothing. It also does not
+  restate CountryWeather's 5.0s/3.0s API thresholds - those govern one HTTP
+  request while this record holds whole-test durations, and reusing the number
+  would create a second gate measuring a different thing under the same name.
+
+  It reports rather than gates, per section 1 of DESIGN.md. A suite that owns an
+  SLO is the thing entitled to fail a build over it.
+
+- **A `floor_ms` threshold, added because the first draft was wrong.** The
+  relative objective alone reported **51 of 225 tests as having spent their
+  budget**. The data says why: the median test in this record has a **1 ms**
+  baseline and **145 of 234** sit under 10 ms, so a 3x tolerance means "breached
+  at 3 ms" - scheduler jitter and timer granularity, not degradation. Tests
+  whose baseline falls under 100 ms are now excluded outright, and the measured
+  justification is recorded in the config beside the number. With the floor in
+  place, 78 tests carry a verdict and none has breached.
+
+- **Container test results are collected.** PublicAP's `image_tests` run outside
+  `testpaths` and appeared in no ingested artifact, so `PAP_10001..PAP_10006`
+  were assigned IDs for tests this record had never seen. Both image jobs now
+  emit JUnit and upload it, and `image` is captured as a parameter rather than
+  split across two config entries - the same tests run against the image built
+  from the commit and the image already published, which is a real difference in
+  the system under test. It is deliberately **not** an environment axis, so a
+  disagreement between the two images is reported rather than pooled away.
+
+- **A repositories legend**, published once ahead of the tables, carrying each
+  suite's short code, a link, its test count, and the range of assigned IDs
+  actually in use. The range is what exposed the container gap above: PublicAP's
+  started at `PAP_10007`.
+
+### Changed
+
+- **Every per-test table now carries the test name beside its ID.** An assigned
+  ID is the right key and the wrong label - `PAWA_10020` is stable across
+  renames precisely because it carries no meaning, so a report printing only the
+  ID sends every reader to the source to find out which test it is. Under a test
+  management system the ID would resolve to a title; there is none here, and the
+  report should not assume one.
+
+- **Repository columns use the short code** (`CWA`, `PAWA`, `PAP`, `VMD`) rather
+  than the full name, which cost a third of every table's width to repeat
+  something a reader learns once. The codes are the prefixes of each suite's
+  assigned IDs, so the column agrees with the IDs beside it instead of being a
+  second naming scheme.
+
+### Fixed
+
+- **The unassigned-ID count reported every test as unassigned.** Identity
+  stitching sets a test's identity from any ID observed for it, but the older
+  rows still carry `NULL` in `test_id`, so counting NULLs directly claimed
+  CountryWeather had "17 tests, +17 without one" beside a range covering nine of
+  them. The count now collapses to one row per test first. CWA reads 9 assigned
+  plus 8 unassigned - and those 8 are the deleted tests the lifetime-window rule
+  identified independently.
+
+---
+
 ## v0.2.0 - 2026-08-17
 
 ### Added

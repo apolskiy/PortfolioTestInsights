@@ -15,7 +15,7 @@ was being deleted on a rolling 90-day clock, because for public repositories 90
 days is GitHub's retention *maximum* and not merely its default. No setting
 prevents it; persisting the data elsewhere is the only mechanism there is.
 
-> **Documentation status:** describes **v0.2.0**, reviewed 2026-08-17.
+> **Documentation status:** describes **v0.3.0**, reviewed 2026-08-17.
 > Each section carries the release and date its content last changed, so a
 > reader arriving at a later version can see at a glance which parts moved. This
 > file always describes the *current* release; the reasoning behind the design,
@@ -25,7 +25,7 @@ prevents it; persisting the data elsewhere is the only mechanism there is.
 
 ## 1. What it collects
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 | Repository | Artifact | Format |
 |---|---|---|
@@ -46,7 +46,7 @@ have recovered a single historical run. See [DESIGN.md §4](DESIGN.md).
 
 ## 2. Setup
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 ### Prerequisites
 
@@ -84,7 +84,7 @@ remote URL.
 
 ## 3. Running it
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 ```bash
 make ingest                                  # pull anything new into the record
@@ -135,7 +135,7 @@ because it holds no independent copy of it.
 
 ## 4. Where the data goes
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 ```text
 data/
@@ -156,7 +156,7 @@ git.
 
 ## 5. Reporting and observability
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 **Failure diagnostics are captured, not summarized.** Every non-passing result
 carries both its message and its full stack trace, read from
@@ -177,6 +177,29 @@ steps at all, and only a minority of Allure results carry them, so a step-level
 report that did not check this would quietly describe a fraction of the corpus
 as though it were the whole.
 
+**Duration is held to an error budget, not a per-run assertion.** A single slow
+run failing a build is noise; sustained degradation is signal. A run breaches
+when it exceeds a multiple of that test's own baseline median, and the budget
+allows a fraction of the trailing window to breach before it is spent.
+
+The objective is **relative** because no suite here declares a per-test duration
+SLA - an absolute threshold would have to be seeded from this history and then
+measured against it. It deliberately does not restate CountryWeather's 5.0s/3.0s
+API thresholds either: those govern one HTTP request, while this record holds
+whole-test durations. And it reports rather than gates, because the collector
+must never be able to fail another repository's build.
+
+The policy carries a **100 ms floor**, and that number was measured rather than
+guessed. Without it the relative objective reported 51 of 225 tests as having
+spent their budget - the median test here has a 1 ms baseline and 145 of 234 sit
+under 10 ms, so a 3x tolerance means "breached at 3 ms", which is timer
+granularity. With the floor, 78 tests carry a verdict and none has breached.
+
+**Every table names the test as well as its ID.** An assigned ID is the right
+key and the wrong label: `PAWA_10020` is stable across renames precisely because
+it carries no meaning, so a report printing only the ID would send every reader
+to the source to find out which test it is.
+
 **An artifact that yields nothing is recorded as data.** An expired artifact is
 routine - 90 days is the retention maximum for public repositories, so loss is
 the steady state. But an artifact that exists while containing no test results
@@ -195,7 +218,7 @@ directory at all. The report shell was generated over zero results.
 
 ## 6. Code standards
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 * **Pylint at a blocking 10.00/10**, matching CountryWeather and PublicAP.
   `make lint` is the same command CI runs, needs no token, and spends nothing.
@@ -221,7 +244,7 @@ directory at all. The report shell was generated over zero results.
 
 ## 7. Known limits
 
-<sub>v0.2.0 &middot; 2026-08-17</sub>
+<sub>v0.3.0 &middot; 2026-08-17</sub>
 
 * **`head_sha` does not identify the input for the site suite.** Half of
   PlaywrightAPWebsiteAutomation's runs are `repository_dispatch`, where the
