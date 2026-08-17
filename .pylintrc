@@ -1,0 +1,32 @@
+[MAIN]
+# Matches the gate in CountryWeather and PublicAP.
+fail-under=10.0
+
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+# ParsedResult carries one attribute per field a report can group or filter by
+# (module, test name, params, status, duration, message, labels, display name,
+# history id, steps). The count is dictated by the union of what three source
+# formats publish rather than by the class doing too much, and collapsing
+# unrelated fields into a dict to satisfy the default limit of 7 would trade a
+# typed record for an untyped bag. Raised deliberately rather than worked around.
+max-attributes=12
+
+[BASIC]
+# Names must be at least three characters and must read as what they hold.
+# Length is the half a linter can check, so it is checked here rather than left
+# to review: `for res in results` and `except E as e` are the habits this rule
+# exists to stop, and both are invisible in a diff until someone is debugging.
+variable-rgx=^[a-z_][a-z0-9_]{2,40}$
+argument-rgx=^[a-z_][a-z0-9_]{2,40}$
+attr-rgx=^_?[a-z_][a-z0-9_]{2,40}$
+# Short names that are clearer than any expansion, and only these.
+good-names=_
+
+[MESSAGES CONTROL]
+# Records are data, not behaviour. A frozen dataclass that exists to be
+# serialized has no methods by design, and R0903 has nothing useful to say
+# about it.
+disable=too-few-public-methods

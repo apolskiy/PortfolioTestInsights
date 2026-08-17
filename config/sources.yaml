@@ -1,0 +1,51 @@
+# Source configuration for the collector.
+#
+# Every difference between the five repositories lives here rather than in code.
+# Adding a sixth project is an entry in this file; it is never a new module and
+# never a copy of an existing one.
+#
+# artifact `name` is matched as a regular expression against the artifact name.
+# Named groups become parameter columns, which is how PublicAP's matrix legs
+# become data instead of four near-identical config blocks.
+#
+# `glob` is matched with fnmatch against the paths inside the artifact zip.
+
+sources:
+  - repo: apolskiy/PlaywrightAPWebsiteAutomation
+    prefix: PAWA
+    artifacts:
+      # Leading `*` on purpose: the report has been uploaded both under
+      # `reports/allure-report/` and at the archive root across this history,
+      # and fnmatch's `*` spans `/` and matches the empty string, so one
+      # pattern covers both layouts without a second config entry.
+      - name: "^execution-reports$"
+        parser: allure_report
+        glob: "*data/test-cases/*.json"
+      - name: "^allure-results-(?P<browser>\\w+)$"
+        parser: allure_raw
+        glob: "*-result.json"
+
+  - repo: apolskiy/CountryWeather
+    prefix: CWA
+    artifacts:
+      # Same two layouts as PlaywrightAPWebsiteAutomation; see the note above.
+      - name: "^qa-artifacts$"
+        parser: allure_report
+        glob: "*data/test-cases/*.json"
+
+  - repo: apolskiy/VM-Deployment-and-Configuration
+    prefix: VMD
+    artifacts:
+      # This repository has run under two workflow names, `CI` and
+      # `VM Cluster CI`, so ingestion keys on artifact name and never on
+      # workflow name.
+      - name: "^allure-results$"
+        parser: allure_raw
+        glob: "*-result.json"
+
+  - repo: apolskiy/PublicAP
+    prefix: PAP
+    artifacts:
+      - name: "^emulator-reports-(?P<os>[\\w-]+)-py(?P<python>[\\d.]+)$"
+        parser: junit
+        glob: "emulator-results.xml"

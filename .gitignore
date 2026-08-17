@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Derived index and caches - rebuilt from data/, never committed.
+build/
+*.sqlite
+
+# IDE and virtual environment.
+# `.venv` is already matched by the Environments section above and `.idea/` is
+# present there but commented out; both are restated here explicitly so the
+# intent is visible in one place rather than depending on a reader spotting a
+# commented line 200 lines up.
+.idea/
+.venv/
+venv/

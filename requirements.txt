@@ -1,0 +1,17 @@
+# Runtime dependencies for the collector.
+#
+# Deliberately small. The project's job is to read three file formats and one
+# REST API, and every dependency added here is a thing that can break a nightly
+# job that nobody is watching.
+
+requests==2.32.5
+PyYAML==6.0.3
+
+# Static analysis. Kept in the single requirements file rather than a separate
+# dev set, matching CountryWeather and PublicAP: the linter must import every
+# third-party name the project imports in order to resolve them, so the two
+# dependency sets are the same set plus one entry.
+pylint==4.0.6
+
+# Unit tests run against recorded fixtures, never the live API.
+pytest==9.1.1
