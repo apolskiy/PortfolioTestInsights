@@ -1,0 +1,56 @@
+name: PortfolioTestInsights CI
+
+# Documentation-only commits change nothing this pipeline can measure, so they
+# do not spend a run. A denylist rather than an allowlist, deliberately: an
+# allowlist has to be extended whenever a directory is added, and forgetting is
+# silent - new code that never runs in CI while the badge stays green.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE', '.gitignore', '.idea/**', 'data/**']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE', '.gitignore', '.idea/**', 'data/**']
+  workflow_dispatch:
+
+# `data/**` is ignored above because an ingestion commit changes only the
+# durable record. Re-linting unchanged source to confirm a result that cannot
+# have moved is the same waste this portfolio's other pipelines already avoid.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portfoliotestinsights-ci
+  cancel-in-progress: false
+
+jobs:
+  # Static analysis is the whole gate for v0.1.0. There is deliberately no test
+  # job yet: the unit tests run against recorded fixtures that have not been
+  # committed, and a pytest job collecting zero tests exits 5 and would either
+  # fail the build or be papered over with a flag that makes the gate
+  # meaningless. A gate that passes by finding nothing is the defect this
+  # project was built to notice, so it is not shipped here.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # The Makefile owns the invocation so a local run and this one are the
+      # same command. It also fails when git matches no Python files, rather
+      # than letting pylint exit 0 having linted nothing.
+      - name: Run Pylint
+        run: make lint
