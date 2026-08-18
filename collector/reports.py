@@ -603,10 +603,13 @@ def coverage_gaps(connection: sqlite3.Connection) -> list[str]:
         )
     lines.append("")
     lines.append(
-        "Assigned IDs are zero everywhere because every row here predates them. The "
-        "scheme is live in all four suites now, so rows gathered from the next run "
-        "onward will carry one; these never can, which is why reports key on "
-        "`COALESCE(test_id, test_uid)`."
+        "The assigned-ID column counts rows carrying one, not tests that have one. "
+        "All four suites publish IDs, but every row backfilled before 2026-08-16 "
+        "predates the scheme and can never gain one, since the artifacts are frozen "
+        "and some have expired. Identity is therefore not `COALESCE(test_id, "
+        "test_uid)` - that would key earlier rows by uid and later rows by ID, "
+        "splitting one long history into two short ones at the changeover. An ID "
+        "observed anywhere for a test is applied to every row for that test instead."
     )
     lines.append("")
     lines.append(

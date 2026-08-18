@@ -377,7 +377,16 @@ being backfilled were produced before any ID existed - CountryWeather's oldest
 expire in three days and can never be regenerated. So `test_id` is a **nullable
 column**, not the primary key:
 
-- Reports key on `COALESCE(test_id, test_uid)`.
+- Reports key on a materialized `identity`: an ID observed anywhere for a
+  `test_uid` becomes that test's identity on every row for it, including rows
+  recorded before the ID existed.
+
+  > **Superseded.** This bullet originally specified `COALESCE(test_id,
+  > test_uid)`, and implementing it exactly as written is what produced the
+  > v0.2.0 defect: `COALESCE` keys every earlier row by uid and every later row
+  > by ID, splitting one long history into two short ones at the changeover. It
+  > counted PublicAP's 36 tests as 72 and VM's 140 as 280. The design named the
+  > right requirement and the wrong mechanism; the requirement is unchanged.
 - `test_uid` is always populated and remains the join that stitches
   pre-ID history to post-ID history.
 - A `test_id` to `test_uid` mapping accumulates as annotated runs arrive, giving
@@ -385,8 +394,8 @@ column**, not the primary key:
 
 **Uniqueness must be enforced, or the scheme silently does the opposite of its
 job.** A duplicated ID merges two tests' histories into one, which is harder to
-notice than a fork because the row count still looks reasonable. The collector
-therefore fails ingestion when one `test_id` resolves to more than one
+notice than a fork because the row count still looks reasonable.
+PortfolioTestInsights therefore fails ingestion when one `test_id` resolves to more than one
 `test_uid` within a repository, rather than reporting an average over two
 different tests.
 

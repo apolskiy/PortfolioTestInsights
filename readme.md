@@ -15,7 +15,7 @@ was being deleted on a rolling 90-day clock, because for public repositories 90
 days is GitHub's retention *maximum* and not merely its default. No setting
 prevents it; persisting the data elsewhere is the only mechanism there is.
 
-> **Documentation status:** describes **v0.3.0**, reviewed 2026-08-17.
+> **Documentation status:** describes **v0.3.1**, reviewed 2026-08-18.
 > Each section carries the release and date its content last changed, so a
 > reader arriving at a later version can see at a glance which parts moved. This
 > file always describes the *current* release; the reasoning behind the design,
@@ -62,7 +62,7 @@ which is the only reason a token is needed.
   `apolskiy`, repository access limited to the four source repositories,
   permission **Actions: read** and nothing else. (Fine-grained tokens always
   carry `Metadata: read`; no further scope is required, because every endpoint
-  the collector calls is under `/actions/`.)
+  PortfolioTestInsights calls is under `/actions/`.)
 
   **Stored in this repository only.** The token's *scope* spans four
   repositories, but the secret lives in exactly one - the repository whose
@@ -70,7 +70,8 @@ which is the only reason a token is needed.
   scoped to the repository running the workflow, so it cannot read another's
   artifacts.
 
-  Read-only by design. The collector never writes to a source repository; the
+  Read-only by design. PortfolioTestInsights never writes to a source
+  repository; the
   commit `insights.yml` makes is to *this* repository, using the built-in token
   under `permissions: contents: write`.
 * **Local**: the same variable, or nothing at all. With no variable set the
@@ -186,8 +187,8 @@ The objective is **relative** because no suite here declares a per-test duration
 SLA - an absolute threshold would have to be seeded from this history and then
 measured against it. It deliberately does not restate CountryWeather's 5.0s/3.0s
 API thresholds either: those govern one HTTP request, while this record holds
-whole-test durations. And it reports rather than gates, because the collector
-must never be able to fail another repository's build.
+whole-test durations. And it reports rather than gates, because
+PortfolioTestInsights must never be able to fail another repository's build.
 
 The policy carries a **100 ms floor**, and that number was measured rather than
 guessed. Without it the relative objective reported 51 of 225 tests as having
@@ -244,7 +245,7 @@ directory at all. The report shell was generated over zero results.
 
 ## 7. Known limits
 
-<sub>v0.3.0 &middot; 2026-08-17</sub>
+<sub>v0.3.1 &middot; 2026-08-18</sub>
 
 * **`head_sha` does not identify the input for the site suite.** Half of
   PlaywrightAPWebsiteAutomation's runs are `repository_dispatch`, where the
@@ -257,9 +258,18 @@ directory at all. The report shell was generated over zero results.
   Allure label and a JUnit property, and both parsers read it. But the 13,458
   rows already backfilled predate the scheme and can never carry one, because
   the artifacts they came from are frozen and some have since expired. So
-  `test_id` stays nullable and reports key on `COALESCE(test_id, test_uid)`,
-  with `test_uid` remaining the join that stitches pre-ID history to post-ID
-  history.
+  `test_id` stays nullable, and an ID observed *anywhere* for a test becomes
+  that test's identity *everywhere* - including on those older rows, which is
+  what stitches pre-ID history to post-ID history.
+
+  Not `COALESCE(test_id, test_uid)`, which was the first implementation and is
+  the wrong one: it keys every earlier row by uid and every later row by ID, so
+  a single long history becomes two short ones at the changeover. It counted
+  PublicAP's 36 tests as 72 and VM's 140 as 280. Backward propagation is only
+  sound because uniqueness is enforced while the map is built - one ID claimed
+  by two tests raises rather than silently averaging over two different tests,
+  since a merge is harder to notice than a fork when the row count still looks
+  plausible.
 * **Same-input evidence is narrow, and the report says so.** The only place the
   same commit runs more than once is PublicAP's four-leg matrix, and no suite
   reruns a failure. So "no test disagreed with itself" is a true statement about

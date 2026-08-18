@@ -17,6 +17,26 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.3.1 - 2026-08-18
+
+### Fixed
+
+- **The README still described identity as `COALESCE(test_id, test_uid)`** in
+  §7, three releases after v0.2.0 replaced it. The behaviour was corrected; the
+  documentation of it was not, so the file described the exact defect the code
+  had stopped having - and did so in the section a reader consults precisely
+  because they want to know how history survives a rename.
+
+  §7 now states the rule that actually runs (an ID observed anywhere for a test
+  becomes its identity everywhere), what it deliberately is not, and why the
+  backward propagation is only sound alongside the uniqueness check. A stale
+  doc is worse here than a missing one: it reads as verified.
+
+  All four suite READMEs repeated the same claim about PortfolioTestInsights in
+  their own Test Identity sections and have been corrected alongside this one.
+
+---
+
 ## v0.3.0 - 2026-08-17
 
 ### Added
