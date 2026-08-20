@@ -118,6 +118,13 @@ Step coverage is uneven by format, not by choice: JUnit cannot express steps at 
 | CountryWeather | 26200910904 | qa-artifacts | expired | 2026-05-21 | failure |
 | CountryWeather | 26206077943 | qa-artifacts | expired | 2026-05-21 | failure |
 | CountryWeather | 26206359194 | qa-artifacts | no_members_matched | 2026-05-21 | failure |
+| CountryWeather | 26206359194 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26206698579 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26206966828 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26207246753 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26207455811 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26207952023 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26238310790 | qa-artifacts | expired | 2026-05-21 | success |
 | PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.12 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.14 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-windows-latest-py3.12 | download_failed | 2026-08-03 | success |
