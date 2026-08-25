@@ -17,7 +17,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 |---|---:|---:|---:|---:|---:|
 | CWA | 41 | 17 | 1552 | 15 | 15 |
 | PAWA | 68 | 41 | 3847 | 21 | 21 |
-| PAP | 16 | 42 | 6028 | 0 | 0 |
+| PAP | 17 | 42 | 6056 | 0 | 0 |
 | VMD | 23 | 140 | 3596 | 0 | 0 |
 
 ## Same-input disagreement
@@ -100,14 +100,14 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
 | PlaywrightAPWebsiteAutomation | 3847 | 3847 | 492 | allure_raw,allure_report |
-| PublicAP | 6028 | 0 | 892 | junit |
+| PublicAP | 6056 | 0 | 920 | junit |
 | VM-Deployment-and-Configuration | 3596 | 299 | 348 | allure_raw |
 
 The assigned-ID column counts rows carrying one, not tests that have one. All four suites publish IDs, but every row backfilled before 2026-08-16 predates the scheme and can never gain one, since the artifacts are frozen and some have expired. Identity is therefore not `COALESCE(test_id, test_uid)` - that would key earlier rows by uid and later rows by ID, splitting one long history into two short ones at the changeover. An ID observed anywhere for a test is applied to every row for that test instead.
 
 Step coverage is uneven by format, not by choice: JUnit cannot express steps at all, and Allure records them only where a suite used `allure.step`. A step-level statistic computed over the whole corpus would silently describe the subset that has them.
 
-**37 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
+**43 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
 
 ## Artifacts that yielded nothing
 
