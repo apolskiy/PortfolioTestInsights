@@ -126,6 +126,12 @@ Step coverage is uneven by format, not by choice: JUnit cannot express steps at 
 | CountryWeather | 26207952023 | qa-artifacts | expired | 2026-05-21 | success |
 | CountryWeather | 26238310790 | qa-artifacts | expired | 2026-05-21 | success |
 | CountryWeather | 26547836779 | qa-artifacts | expired | 2026-05-28 | success |
+| PlaywrightAPWebsiteAutomation | 30429957860 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30432596741 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30433150718 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30433428104 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30433738479 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30439026830 | allure-results-chromium | expired | 2026-07-29 | failure |
 | PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.12 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.14 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-windows-latest-py3.12 | download_failed | 2026-08-03 | success |
