@@ -17,7 +17,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 |---|---:|---:|---:|---:|---:|
 | CWA | 41 | 17 | 1552 | 15 | 15 |
 | PAWA | 68 | 41 | 3847 | 21 | 21 |
-| PAP | 19 | 42 | 6112 | 0 | 0 |
+| PAP | 20 | 42 | 6140 | 0 | 0 |
 | VMD | 23 | 140 | 3596 | 0 | 0 |
 
 ## Same-input disagreement
@@ -100,7 +100,7 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
 | PlaywrightAPWebsiteAutomation | 3847 | 3847 | 492 | allure_raw,allure_report |
-| PublicAP | 6112 | 0 | 976 | junit |
+| PublicAP | 6140 | 0 | 1004 | junit |
 | VM-Deployment-and-Configuration | 3596 | 299 | 348 | allure_raw |
 
 The assigned-ID column counts rows carrying one, not tests that have one. All four suites publish IDs, but every row backfilled before 2026-08-16 predates the scheme and can never gain one, since the artifacts are frozen and some have expired. Identity is therefore not `COALESCE(test_id, test_uid)` - that would key earlier rows by uid and later rows by ID, splitting one long history into two short ones at the changeover. An ID observed anywhere for a test is applied to every row for that test instead.
