@@ -126,6 +126,10 @@ Step coverage is uneven by format, not by choice: JUnit cannot express steps at 
 | CountryWeather | 26207952023 | qa-artifacts | expired | 2026-05-21 | success |
 | CountryWeather | 26238310790 | qa-artifacts | expired | 2026-05-21 | success |
 | CountryWeather | 26547836779 | qa-artifacts | expired | 2026-05-28 | success |
+| CountryWeather | 27729019399 | qa-artifacts | expired | 2026-06-18 | failure |
+| CountryWeather | 27737654656 | qa-artifacts | expired | 2026-06-18 | failure |
+| CountryWeather | 27738178599 | qa-artifacts | expired | 2026-06-18 | success |
+| CountryWeather | 27738707701 | qa-artifacts | expired | 2026-06-18 | success |
 | PlaywrightAPWebsiteAutomation | 30429957860 | allure-results-chromium | expired | 2026-07-29 | success |
 | PlaywrightAPWebsiteAutomation | 30432596741 | allure-results-chromium | expired | 2026-07-29 | success |
 | PlaywrightAPWebsiteAutomation | 30433150718 | allure-results-chromium | expired | 2026-07-29 | success |
