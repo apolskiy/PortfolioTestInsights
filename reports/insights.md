@@ -17,7 +17,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 |---|---:|---:|---:|---:|---:|
 | CWA | 41 | 17 | 1552 | 15 | 15 |
 | PAWA | 68 | 41 | 3847 | 21 | 21 |
-| PAP | 24 | 42 | 6252 | 0 | 0 |
+| PAP | 25 | 42 | 6280 | 0 | 0 |
 | VMD | 23 | 140 | 3596 | 0 | 0 |
 
 ## Same-input disagreement
@@ -77,8 +77,7 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 
 | Repo | Test ID | Test | Median | p95 | p95/median | Runs |
 |---|---|---|---:|---:|---:|---:|
-| PAP | PAP_10005 | test_undelayed_request_reports_zero | 2 ms | 9 ms | 4.5x | 9 |
-| PAP | PAP_10006 | test_uninterpretable_delay_is_refused_by_the_container | 2 ms | 8 ms | 4.0x | 27 |
+| PAP | PAP_10005 | test_undelayed_request_reports_zero | 2 ms | 9 ms | 4.5x | 10 |
 | PAWA | PAWA_10002 | test_route_loads_without_console_or_network_errors | 72 ms | 269 ms | 3.8x | 124 |
 | PAP | PAP_10031 | test_aborted_requests_render_their_own_status | 1 ms | 3 ms | 3.0x | 60 |
 | PAWA | PAWA_10001 | test_route_responds_with_http_200 | 114 ms | 312 ms | 2.7x | 124 |
@@ -87,12 +86,13 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 | PAP | PAP_10028 | test_unsupported_code_returns_404 | 1 ms | 2 ms | 2.0x | 420 |
 | PAP | PAP_10029 | test_unroutable_path_returns_404 | 1 ms | 2 ms | 2.0x | 240 |
 | PAP | PAP_10036 | test_uninterpretable_delay_yields_the_sentinel | 1 ms | 2 ms | 2.0x | 140 |
+| VMD | VMD_10131 | test_sensitive_to_each_file | 1 ms | 2 ms | 2.0x | 138 |
 
 ## Duration error budget
 
 A run breaches when it exceeds **3x** that test's baseline median. The budget allows **10%** of the trailing **20** runs to breach before it is spent. Tests with fewer than 10 observations in the window, or a baseline median under 100 ms, are omitted - a multiple of a millisecond is measurement noise rather than degradation.
 
-**No test breached its objective in the trailing window.** 78 tests carried enough observations to judge; the rest were omitted by the thresholds above rather than passing quietly.
+**No test breached its objective in the trailing window.** 79 tests carried enough observations to judge; the rest were omitted by the thresholds above rather than passing quietly.
 
 ## What this record cannot tell you
 
@@ -100,7 +100,7 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
 | PlaywrightAPWebsiteAutomation | 3847 | 3847 | 492 | allure_raw,allure_report |
-| PublicAP | 6252 | 0 | 1116 | junit |
+| PublicAP | 6280 | 0 | 1144 | junit |
 | VM-Deployment-and-Configuration | 3596 | 299 | 348 | allure_raw |
 
 The assigned-ID column counts rows carrying one, not tests that have one. All four suites publish IDs, but every row backfilled before 2026-08-16 predates the scheme and can never gain one, since the artifacts are frozen and some have expired. Identity is therefore not `COALESCE(test_id, test_uid)` - that would key earlier rows by uid and later rows by ID, splitting one long history into two short ones at the changeover. An ID observed anywhere for a test is applied to every row for that test instead.
