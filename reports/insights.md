@@ -136,10 +136,13 @@ Step coverage is uneven by format, not by choice: JUnit cannot express steps at 
 | PlaywrightAPWebsiteAutomation | 30433428104 | allure-results-chromium | expired | 2026-07-29 | success |
 | PlaywrightAPWebsiteAutomation | 30433738479 | allure-results-chromium | expired | 2026-07-29 | success |
 | PlaywrightAPWebsiteAutomation | 30439026830 | allure-results-chromium | expired | 2026-07-29 | failure |
+| PlaywrightAPWebsiteAutomation | 30497185936 | execution-reports | download_failed | 2026-07-29 | success |
 | PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.12 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.14 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-windows-latest-py3.12 | download_failed | 2026-08-03 | success |
 | PublicAP | 30842805006 | emulator-reports-windows-latest-py3.14 | download_failed | 2026-08-03 | success |
+| PlaywrightAPWebsiteAutomation | 31350661973 | execution-reports | download_failed | 2026-08-10 | failure |
+| CountryWeather | 31999618381 | qa-artifacts | download_failed | 2026-08-17 | success |
 | PlaywrightAPWebsiteAutomation | 31999679216 | execution-reports | no_members_matched | 2026-08-17 | failure |
 | PlaywrightAPWebsiteAutomation | 32000447197 | execution-reports | no_members_matched | 2026-08-17 | failure |
 | PlaywrightAPWebsiteAutomation | 32000475911 | execution-reports | no_members_matched | 2026-08-17 | failure |
