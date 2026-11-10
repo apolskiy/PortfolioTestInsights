@@ -17,6 +17,29 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.4.0 - 2026-11-10
+
+### Added
+
+- **`test_id_from_name`, a per-source way to recover an assigned ID from the
+  test name.** The Multi-LLM Evaluation suites (AP-Harness-QC, AP-Model-QC)
+  write each test's ID into the function name, `MQC_CMN_UNI_112016_red_when_...`,
+  and publish no `test_id` label or property, so every one of their results
+  would have arrived unidentified. A source may now declare a regex with a
+  `test_id` group; ingestion applies it after parsing, only to results a parser
+  left without an ID, so the parsers stay format readers and never learn one
+  source's naming. A pattern that will not compile or has no `test_id` group is
+  refused at startup. Checked against one artifact of each QC kind: every
+  result identified, no ID claimed twice.
+- **`code`, a display code separate from the ID prefix.** The two Multi-LLM
+  Evaluation repositories share the `MQC` prefix, and a legend in which one
+  code expands to two repositories is not a legend. `code` defaults to
+  `prefix`, so no existing source changes.
+
+No new source is configured yet: what to ingest from the two QC repositories is
+still open, because ingesting all of it would grow the committed record by
+roughly two orders of magnitude.
+
 ## v0.3.1 - 2026-08-18
 
 ### Fixed

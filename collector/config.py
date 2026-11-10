@@ -111,6 +111,10 @@ class ArtifactSpec:
         return {key: value for key, value in match.groupdict().items() if value is not None}
 
 
+#: Named group a ``test_id_from_name`` pattern must define.
+TEST_ID_GROUP: Final[str] = "test_id"
+
+
 @dataclass(frozen=True)
 class SourceSpec:
     """One repository and the artifacts worth reading from it.
@@ -119,11 +123,48 @@ class SourceSpec:
         repo: Owner-qualified repository name.
         prefix: Assigned test-ID prefix for this repository, e.g. ``PAWA``.
         artifacts: Artifact patterns to look for.
+        code: Short code the report prints for this repository. The prefix,
+            unless two repositories share one: the two Multi-LLM Evaluation
+            repositories both number their tests ``MQC_...``, and a legend in
+            which one code expands to two repositories is not a legend.
+        test_id_from_name: For a suite that writes its assigned ID into the test
+            function's name rather than publishing it as a label or property,
+            the pattern that extracts it - a regex with a ``test_id`` group,
+            matched against the start of the test name. None for every suite
+            that publishes its ID the standard way.
     """
 
     repo: str
     prefix: str
     artifacts: tuple[ArtifactSpec, ...]
+    code: str = ""
+    test_id_from_name: re.Pattern[str] | None = None
+
+    @property
+    def display_code(self) -> str:
+        """Return the code the report prints for this repository.
+
+        Returns:
+            The configured code, or the prefix when none is configured.
+        """
+        return self.code or self.prefix
+
+    def derived_test_id(self, test_name: str) -> str | None:
+        """Extract an assigned test ID from a test name, where this suite puts it there.
+
+        Args:
+            test_name: Test function name with parameters removed.
+
+        Returns:
+            The ID, or None when this source declares no pattern or the name
+            does not carry one. A name that does not match yields no ID rather
+            than a guessed one, the same rule a malformed label follows.
+        """
+        if self.test_id_from_name is None:
+            return None
+        # Same dataclass-field inference gap as ArtifactSpec.match_params.
+        match = self.test_id_from_name.match(test_name)  # pylint: disable=no-member
+        return match.group(TEST_ID_GROUP) if match else None
 
     @property
     def slug(self) -> str:
@@ -188,7 +229,43 @@ def _build_source(entry: dict, config_path: Path) -> SourceSpec:
         repo=repo,
         prefix=prefix,
         artifacts=tuple(_build_artifact(item, repo, config_path) for item in raw_artifacts),
+        code=str(entry.get("code") or ""),
+        test_id_from_name=_build_test_id_pattern(entry.get("test_id_from_name"), repo, config_path),
     )
+
+
+def _build_test_id_pattern(
+    raw_pattern: str | None, repo: str, config_path: Path
+) -> re.Pattern[str] | None:
+    """Validate a source's ``test_id_from_name`` pattern.
+
+    Args:
+        raw_pattern: The pattern as written in the config, or None.
+        repo: Owning repository, used in error messages.
+        config_path: Used only to make error messages locatable.
+
+    Returns:
+        The compiled pattern, or None when the source declares none.
+
+    Raises:
+        ConfigError: If the pattern will not compile or has no ``test_id``
+            group, either of which would leave every test of the source
+            unidentified without saying why.
+    """
+    if not raw_pattern:
+        return None
+    try:
+        pattern = re.compile(raw_pattern)
+    except re.error as error:
+        raise ConfigError(
+            f"{config_path}: '{repo}' test_id_from_name '{raw_pattern}' is invalid: {error}"
+        ) from error
+    if TEST_ID_GROUP not in pattern.groupindex:
+        raise ConfigError(
+            f"{config_path}: '{repo}' test_id_from_name '{raw_pattern}' has no "
+            f"'(?P<{TEST_ID_GROUP}>...)' group, so it can match a name without yielding an ID"
+        )
+    return pattern
 
 
 def _build_artifact(item: dict, repo: str, config_path: Path) -> ArtifactSpec:

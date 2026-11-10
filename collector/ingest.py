@@ -23,7 +23,7 @@ import logging
 import sys
 import zipfile
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final
 
@@ -251,7 +251,7 @@ def _read_artifact(
             {"archive_files": len(manifest), "sample": manifest[:MANIFEST_SAMPLE_SIZE]},
         )
 
-    results = PARSERS[match.spec.parser](members, match.params)
+    results = _with_derived_test_ids(PARSERS[match.spec.parser](members, match.params), source)
     if not results:
         LOGGER.warning(
             "  %d members but no parseable results in %s (run %s)", len(members), match.name, run_id
@@ -265,6 +265,33 @@ def _read_artifact(
     LOGGER.info("  %s run %s: %d results (%s)", match.name, run_id, len(results), match.spec.parser)
     _persist(context, source, match, results)
     return None
+
+
+def _with_derived_test_ids(results: list[Any], source: SourceSpec) -> list[Any]:
+    """Fill in an assigned test ID from the test name, for a source that keeps it there.
+
+    Most suites publish their ID as an Allure label or a JUnit property, which
+    the parsers read. The Multi-LLM Evaluation suites write it into the
+    function name instead - ``MQC_CMN_UNI_112016_red_when_...`` - so the ID is
+    recovered here, after parsing, where the source's configuration is known.
+    The parsers stay format readers and never learn about one source's naming.
+    An ID a parser already found is never overwritten.
+
+    Args:
+        results: Parsed results from one artifact.
+        source: The repository they came from.
+
+    Returns:
+        The same results, with ``test_id`` set wherever the name carries one.
+    """
+    if source.test_id_from_name is None:
+        return results
+    return [
+        result
+        if result.test_id
+        else replace(result, test_id=source.derived_test_id(result.test_name))
+        for result in results
+    ]
 
 
 def _persist(

@@ -109,7 +109,7 @@ def repo_codes() -> dict[str, str]:
         Owner-qualified repository name to short code. Repositories missing from
         the configuration fall back to their bare name.
     """
-    return {source.repo: source.prefix for source in load_sources()}
+    return {source.repo: source.display_code for source in load_sources()}
 
 
 def _code(repo: str, codes: dict[str, str]) -> str:
@@ -205,7 +205,8 @@ def repositories(connection: sqlite3.Connection) -> list[str]:
     lines = ["## Repositories", ""]
     lines.append(
         "Each code is the prefix of that suite's assigned test IDs, so a code in any "
-        "table agrees with the IDs printed beside it. The range shows which IDs that "
+        "table agrees with the IDs printed beside it - except where two suites share "
+        "a prefix, which are given distinct codes instead. The range shows which IDs that "
         "suite has actually published so far - a test recorded before the scheme "
         "existed carries none, and appears in the tables with `-` in its ID column."
     )
