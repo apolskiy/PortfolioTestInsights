@@ -605,7 +605,7 @@ def coverage_gaps(connection: sqlite3.Connection) -> list[str]:
     lines.append("")
     lines.append(
         "The assigned-ID column counts rows carrying one, not tests that have one. "
-        "All four suites publish IDs, but every row backfilled before 2026-08-16 "
+        "Every suite publishes IDs, but every row backfilled before 2026-08-16 "
         "predates the scheme and can never gain one, since the artifacts are frozen "
         "and some have expired. Identity is therefore not `COALESCE(test_id, "
         "test_uid)` - that would key earlier rows by uid and later rows by ID, "
@@ -614,10 +614,14 @@ def coverage_gaps(connection: sqlite3.Connection) -> list[str]:
     )
     lines.append("")
     lines.append(
-        "Step coverage is uneven by format, not by choice: JUnit cannot express steps "
-        "at all, and Allure records them only where a suite used `allure.step`. A "
-        "step-level statistic computed over the whole corpus would silently describe "
-        "the subset that has them."
+        "Step coverage is uneven by format: JUnit cannot express steps at all, and "
+        "Allure records them only where a suite used `allure.step`. One gap is by "
+        "choice: for the Multi-LLM Evaluation suites, a passing result's steps are "
+        "dropped and only failures keep theirs, because those suites record every "
+        "step of every test and the steps were most of the record's size. Such rows "
+        "still count under With steps, since the source recorded them, and carry "
+        "`steps_omitted`. A step-level statistic computed over the whole corpus would "
+        "silently describe the subset that has them."
     )
 
     not_run = connection.execute(

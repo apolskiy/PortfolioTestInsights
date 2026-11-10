@@ -133,8 +133,11 @@ class ParsedStep:
     parent_ordinal: int | None = None
 
 
+# A plain record of one result's fields, one per column of the row it becomes.
+# Splitting it to satisfy an attribute count would scatter one row across
+# several objects without adding any behaviour.
 @dataclass(frozen=True)
-class ParsedResult:
+class ParsedResult:  # pylint: disable=too-many-instance-attributes
     """One test outcome, normalized away from whichever format produced it.
 
     Attributes:
@@ -156,6 +159,11 @@ class ParsedResult:
             carries one. Null for every artifact produced before the scheme
             existed, which is all backfilled history.
         steps: Recorded steps, empty when the format carries none.
+        steps_omitted: True when the source recorded steps and the collector
+            dropped them by policy - a passing result from an artifact whose
+            step policy is ``failures``. Kept separate so that ``has_steps``
+            still answers "did the source record steps", and an empty step list
+            is never mistaken for a format that cannot express any.
     """
 
     module: str
@@ -170,6 +178,7 @@ class ParsedResult:
     history_id: str | None = None
     test_id: str | None = None
     steps: tuple[ParsedStep, ...] = ()
+    steps_omitted: bool = False
 
     def test_uid(self, repo: str) -> str:
         """Build the cross-run identity for this result.
@@ -217,7 +226,8 @@ class ParsedResult:
             "labels": self.labels,
             "history_id": self.history_id,
             "source_format": source_format,
-            "has_steps": bool(self.steps),
+            "has_steps": bool(self.steps) or self.steps_omitted,
+            "steps_omitted": self.steps_omitted,
             "steps": [
                 {
                     "ordinal": step.ordinal,

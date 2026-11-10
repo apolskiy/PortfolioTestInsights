@@ -10,11 +10,11 @@
 ## 1. What this is
 
 A standalone, read-only collector that pulls test results out of the GitHub
-Actions artifacts of the five portfolio repositories, normalizes them into one
+Actions artifacts of the six portfolio repositories, normalizes them into one
 durable store, and publishes descriptive reliability reports over the combined
 history.
 
-It is a **downstream consumer**. It depends on the five suites; none of them may
+It is a **downstream consumer**. It depends on the six suites; none of them may
 ever depend on it.
 
 ### Non-goals
@@ -431,8 +431,8 @@ enforcing in code rather than documenting and hoping.
 
 ## 8. Source configuration
 
-Heterogeneity lives in `config/sources.yaml`, not in code. Three parsers, five
-repositories, one config entry each:
+Heterogeneity lives in `config/sources.yaml`, not in code. Three parsers, six
+repositories, one config entry each (the first four shown):
 
 ```yaml
 sources:
@@ -465,8 +465,29 @@ sources:
         glob: "emulator-results.xml"
 ```
 
-Adding a sixth project is a config entry. That is the concrete form of the claim
+Adding a project is a config entry. That is the concrete form of the claim
 in §3 that customization is configuration rather than per-repo code.
+
+The two Multi-LLM Evaluation repositories, AP-Harness-QC and AP-Model-QC, are
+the case that proved it, and the case that needed two more keys. Between them
+they upload thousands of artifacts, and collecting everything would have grown
+the record from about 18 MB to about 1.5 GB. Two per-artifact keys control
+volume, and both default to the behavior every earlier entry already had:
+
+- `steps: failures` drops the steps of a passing or skipped result and marks
+  the row `steps_omitted`, so `has_steps` still records that the source had
+  them. A step list is diagnostic, and a passing result has nothing to diagnose.
+- `keep: latest_per_day` reads only the newest artifact per completed UTC day
+  and parameter set. It is used for the unit tiers, which must be fully green on
+  main by rule, so one run a day records that they held.
+
+Only the Ubuntu leg is collected; the Windows leg replays the same recordings.
+The P0, P1 and P2-P4 bands are kept on every run, and the live evaluation runs
+are kept in full, with every step, because they are rare and are the only runs
+where a failure can belong to the model rather than the code.
+
+An artifacts ledger (`<month>.artifacts.ndjson`) records each artifact once it
+has been read, so a daily collection downloads only artifacts it has not seen.
 
 Note that VM-Deployment-and-Configuration has run under **two workflow names** -
 `CI` (21 runs) and `VM Cluster CI` (3) - so ingestion keys on artifact name and
@@ -496,9 +517,9 @@ repository, never on workflow name.
 ### Credentials
 
 A **fine-grained PAT, read-only**: resource owner `apolskiy`, repository access
-limited to the four source repositories, permission **Actions: read** and
+limited to the six source repositories, permission **Actions: read** and
 nothing else. Stored as the `PORTFOLIO_READ_TOKEN` secret on this repository
-alone - the scope spans four repositories, the secret lives in one. The built-in
+alone - the scope spans six repositories, the secret lives in one. The built-in
 `GITHUB_TOKEN` is scoped to the repository running the workflow and cannot read
 another's artifacts.
 

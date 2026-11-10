@@ -1,8 +1,16 @@
 # Source configuration for the collector.
 #
-# Every difference between the five repositories lives here rather than in code.
-# Adding a sixth project is an entry in this file; it is never a new module and
-# never a copy of an existing one.
+# Every difference between the repositories lives here rather than in code.
+# Adding a project is an entry in this file; it is never a new module and never
+# a copy of an existing one.
+#
+# Two optional keys per artifact control volume, and exist because the
+# Multi-LLM Evaluation suites produce far more data than the rest combined:
+#   steps: all | failures   - `failures` drops a passing or skipped result's
+#                             steps and marks it `steps_omitted`.
+#   keep: every | latest_per_day - `latest_per_day` reads only the newest
+#                             artifact per completed UTC day and parameter set.
+# Both default to the first value, so every earlier entry is unchanged.
 #
 # artifact `name` is matched as a regular expression against the artifact name.
 # Named groups become parameter columns, which is how PublicAP's matrix legs
@@ -97,3 +105,68 @@ sources:
       - name: "^image-reports-(?P<image>built|published)$"
         parser: junit
         glob: "image-results.xml"
+
+  # The Multi-LLM Evaluation project: a harness and its cases, split into two
+  # repositories so each can change without destabilizing the other. Both write
+  # the assigned ID into the test function's name and publish no label for it,
+  # and both use the MQC prefix, so each carries a pattern and its own code.
+  #
+  # Sizes measured on one artifact of each kind, 2026-11-10: a harness unit run
+  # is 1057 results and 3.0 MB of rows with steps, 1.15 MB without; a model
+  # preconditions run 253 results, 0.79 / 0.28 MB; one engine's P0 band 19
+  # results, 0.19 / 0.04 MB. Collected in full that was about 1.5 GB against an
+  # 18 MB record, and a single month's partition would pass GitHub's 100 MB
+  # file limit. Hence, for the gate artifacts: the Ubuntu leg only (the Windows
+  # leg replays the same recordings), steps kept on failures only, and the unit
+  # tiers - which must be 100% green on main by rule - once per day.
+  - repo: apolskiy/AP-Harness-QC
+    prefix: MQC
+    code: MQC-H
+    test_id_from_name: "^(?P<test_id>MQC_[A-Z]+_[A-Z]+_\\d{6})(?:_|$)"
+    artifacts:
+      # Unit and system tiers are separate entries so that once-per-day
+      # selection keeps one of each rather than one of either.
+      #
+      # `allure-results/` at the archive root, deliberately not `*allure-...`:
+      # the consumer artifact also holds a `baseline/allure-results/` copy.
+      # Consumer artifacts are not collected at all - they are AP-Model-QC's
+      # own tests run against a harness change, and are recorded under that
+      # repository already.
+      - name: "^mqc-reports-unit-none-replay-(?P<os>ubuntu[\\w.-]*)$"
+        parser: allure_raw
+        glob: "allure-results/*-result.json"
+        steps: failures
+        keep: latest_per_day
+      - name: "^mqc-reports-system-none-replay-(?P<os>ubuntu[\\w.-]*)$"
+        parser: allure_raw
+        glob: "allure-results/*-result.json"
+        steps: failures
+        keep: latest_per_day
+
+  - repo: apolskiy/AP-Model-QC
+    prefix: MQC
+    code: MQC-M
+    test_id_from_name: "^(?P<test_id>MQC_[A-Z]+_[A-Z]+_\\d{6})(?:_|$)"
+    artifacts:
+      # Preconditions are the model repository's unit tests: they must pass
+      # before any engine is measured, so once per day records that they held.
+      - name: "^mqc-reports-cases-preconditions-(?P<os>ubuntu[\\w.-]*)$"
+        parser: allure_raw
+        glob: "allure-results/*-result.json"
+        steps: failures
+        keep: latest_per_day
+      # The P0, P1 and P2-P4 bands of each engine's gate, every run. The band
+      # is not captured: each test's band is fixed by the test itself. Early
+      # runs carry no engine in the name, and the P2-P4 band was spelled `p2p4`
+      # before `p2_p4`; both are accepted rather than lost.
+      - name: "^mqc-reports-cases-(?:p0|p1|p2_p4|p2p4|none)-replay(?:-(?P<engine>claude|gemini|grok|openai))?-(?P<os>ubuntu[\\w.-]*)$"
+        parser: allure_raw
+        glob: "allure-results/*-result.json"
+        steps: failures
+      # The live evaluation ladder, dispatched by hand: preconditions, then
+      # replay/replay (our code), replay/live (the judge) and live/live (the
+      # model). Rare and small, and the only runs where a failure can belong to
+      # the model rather than the code, so every run is kept with every step.
+      - name: "^mqc-reports-cases-(?P<engine>claude|gemini|grok|openai)-(?P<rung>preconditions|replay-replay|replay-live|live-live)(?:-by-(?P<judge>\\w+))?$"
+        parser: allure_raw
+        glob: "allure-results/*-result.json"

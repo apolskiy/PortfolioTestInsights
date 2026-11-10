@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
-from collector.store import ANOMALIES_SUFFIX, DEFAULT_DATA_DIR, RUNS_SUFFIX
+from collector.store import ANOMALIES_SUFFIX, DEFAULT_DATA_DIR, RESULTS_SUFFIX, RUNS_SUFFIX
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,21 +108,18 @@ def read_partitions(data_dir: Path, suffix: str | None) -> list[dict[str, Any]]:
 
     Args:
         data_dir: Root of the durable record.
-        suffix: Partition suffix to read, or None for result partitions, which
-            are identified by carrying neither of the other two suffixes.
+        suffix: Partition suffix to read, or None for result partitions.
+            Results are identified by their own suffix rather than by carrying
+            none of the others, so a new kind of partition - the artifact
+            ledger was the first - can never be read as results.
 
     Returns:
         Every decodable row across all repositories and months.
     """
+    wanted = suffix or RESULTS_SUFFIX
     rows: list[dict[str, Any]] = []
     for path in sorted(data_dir.rglob("*.ndjson")):
-        is_runs = path.name.endswith(RUNS_SUFFIX)
-        is_anomalies = path.name.endswith(ANOMALIES_SUFFIX)
-        if suffix == RUNS_SUFFIX and not is_runs:
-            continue
-        if suffix == ANOMALIES_SUFFIX and not is_anomalies:
-            continue
-        if suffix is None and (is_runs or is_anomalies):
+        if not path.name.endswith(wanted):
             continue
         with open(path, encoding="utf-8") as handle:
             for line in handle:

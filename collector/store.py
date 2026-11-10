@@ -34,6 +34,13 @@ RUNS_SUFFIX: Final[str] = "runs.ndjson"
 #: source repository, and a finding kept only in a log line is a finding lost.
 ANOMALIES_SUFFIX: Final[str] = "anomalies.ndjson"
 
+#: Ledger of artifacts already read, one row per artifact. Without it every
+#: daily collection downloads every artifact still within retention, only to
+#: find each row already recorded - harmless at a few hundred artifacts, and
+#: over a gigabyte a day once the Multi-LLM Evaluation repositories, with
+#: thousands of artifacts between them, are collected.
+ARTIFACTS_SUFFIX: Final[str] = "artifacts.ndjson"
+
 #: Fields whose combination uniquely identifies a result row.
 _RESULT_KEY_FIELDS: Final[tuple[str, ...]] = (
     "repo",
@@ -57,7 +64,39 @@ class NdjsonStore:
         self._result_keys: set[tuple[Any, ...]] = set()
         self._run_keys: set[tuple[Any, ...]] = set()
         self._anomaly_keys: set[tuple[Any, ...]] = set()
+        self._artifact_keys: set[tuple[Any, ...]] = set()
         self._load_existing_keys()
+
+    def has_artifact(self, repo: str, artifact_id: Any) -> bool:
+        """Report whether an artifact has already been read into the record.
+
+        Args:
+            repo: Owner-qualified repository name.
+            artifact_id: The artifact's numeric id.
+
+        Returns:
+            True when the ledger lists it, so it need not be downloaded again.
+        """
+        return (repo, artifact_id) in self._artifact_keys
+
+    def append_artifacts(self, repo_slug: str, month: str, rows: list[dict[str, Any]]) -> int:
+        """Record artifacts as read.
+
+        Args:
+            repo_slug: Short repository name used as the partition directory.
+            month: Partition month as ``YYYY-MM``.
+            rows: Ledger rows, each carrying ``repo`` and ``artifact_id``.
+
+        Returns:
+            How many rows were actually written.
+        """
+        fresh = [row for row in rows if _artifact_key(row) not in self._artifact_keys]
+        if not fresh:
+            return 0
+        self._append(self._partition(repo_slug, month, ARTIFACTS_SUFFIX), fresh)
+        for row in fresh:
+            self._artifact_keys.add(_artifact_key(row))
+        return len(fresh)
 
     @property
     def result_count(self) -> int:
@@ -174,13 +213,18 @@ class NdjsonStore:
         """
         if not self._root.exists():
             return
+        routes = (
+            (RUNS_SUFFIX, self._run_keys, _run_key),
+            (ANOMALIES_SUFFIX, self._anomaly_keys, _anomaly_key),
+            (ARTIFACTS_SUFFIX, self._artifact_keys, _artifact_key),
+            (RESULTS_SUFFIX, self._result_keys, _result_key),
+        )
         for path in sorted(self._root.rglob("*.ndjson")):
-            if path.name.endswith(RUNS_SUFFIX):
-                target, key_of = self._run_keys, _run_key
-            elif path.name.endswith(ANOMALIES_SUFFIX):
-                target, key_of = self._anomaly_keys, _anomaly_key
-            else:
-                target, key_of = self._result_keys, _result_key
+            route = next((route for route in routes if path.name.endswith(route[0])), None)
+            if route is None:
+                LOGGER.warning("Ignoring %s: not a known partition kind", path)
+                continue
+            _, target, key_of = route
             for row in _read_rows(path):
                 target.add(key_of(row))
 
@@ -231,6 +275,18 @@ def _run_key(row: dict[str, Any]) -> tuple[Any, ...]:
         The tuple of identifying fields.
     """
     return (row.get("repo"), row.get("run_id"), row.get("attempt"))
+
+
+def _artifact_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    """Build the uniqueness key for an artifact ledger row.
+
+    Args:
+        row: A ledger row.
+
+    Returns:
+        The repository and artifact id.
+    """
+    return (row.get("repo"), row.get("artifact_id"))
 
 
 def _anomaly_key(row: dict[str, Any]) -> tuple[Any, ...]:

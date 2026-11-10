@@ -24,12 +24,13 @@ import sys
 import zipfile
 from collections import Counter
 from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Final
 
 from collector.config import ArtifactSpec, SourceSpec, load_sources
 from collector.github import GitHubClient, GitHubError
-from collector.models import RunRecord
+from collector.models import PASSED, SKIPPED, RunRecord
 from collector.parsers import PARSERS
 from collector.store import NdjsonStore
 
@@ -143,6 +144,7 @@ class IngestSummary:
     """
 
     artifacts_seen: int = 0
+    artifacts_already_read: int = 0
     artifacts_parsed: int = 0
     results_written: int = 0
     runs_written: int = 0
@@ -162,6 +164,7 @@ class IngestSummary:
             "Ingestion summary",
             "-----------------",
             f"  artifacts matched : {self.artifacts_seen}",
+            f"  already read      : {self.artifacts_already_read} (in the ledger, not downloaded)",
             f"  parsed            : {self.artifacts_parsed}",
             f"  runs written      : {self.runs_written}",
             f"  results written   : {self.results_written}",
@@ -189,22 +192,64 @@ def ingest_repository(context: IngestContext, source: SourceSpec) -> None:
     LOGGER.info("Reading %s", source.repo)
     runs_by_id = {run["id"]: run for run in context.client.list_runs(source.repo)}
 
+    matches: list[ArtifactMatch] = []
     for artifact in context.client.list_artifacts(source.repo):
         matched = _match_artifact(source, artifact)
         if matched is None:
             continue
         spec, params = matched
-        context.summary.artifacts_seen += 1
-        match = ArtifactMatch(
-            artifact=artifact,
-            spec=spec,
-            params=params,
-            run=runs_by_id.get((artifact.get("workflow_run") or {}).get("id")),
+        matches.append(
+            ArtifactMatch(
+                artifact=artifact,
+                spec=spec,
+                params=params,
+                run=runs_by_id.get((artifact.get("workflow_run") or {}).get("id")),
+            )
         )
 
+    today = datetime.now(timezone.utc).date().isoformat()
+    for match in _select(matches, today):
+        context.summary.artifacts_seen += 1
+        if context.store.has_artifact(source.repo, match.artifact_id):
+            context.summary.artifacts_already_read += 1
+            continue
         anomaly = _read_artifact(context, source, match)
         if anomaly is not None:
             _record_anomaly(context, source, match, anomaly)
+
+
+def _select(matches: list[ArtifactMatch], today: str) -> list[ArtifactMatch]:
+    """Apply each artifact spec's run-selection policy.
+
+    ``latest_per_day`` keeps the newest artifact per spec, parameter set and
+    UTC day, and only for days that are over. Choosing the latest of a day
+    that is still running would let an afternoon run add a second "latest" for
+    the same day on the next collection, so a day is collected once, after it
+    ends.
+
+    Args:
+        matches: Every artifact matching a configured pattern, in listing order.
+        today: Today's UTC date as ``YYYY-MM-DD``.
+
+    Returns:
+        The artifacts to read, in listing order.
+    """
+    latest: dict[tuple[Any, ...], ArtifactMatch] = {}
+    chosen: set[int] = set()
+    for match in matches:
+        if match.spec.keep != "latest_per_day":
+            chosen.add(id(match))
+            continue
+        created = str(match.artifact.get("created_at") or "")
+        day = created[:10]
+        if not day or day >= today:
+            continue
+        key = (match.spec.pattern.pattern, tuple(sorted(match.params.items())), day)
+        current = latest.get(key)
+        if current is None or created > str(current.artifact.get("created_at") or ""):
+            latest[key] = match
+    chosen.update(id(match) for match in latest.values())
+    return [match for match in matches if id(match) in chosen]
 
 
 def _read_artifact(
@@ -251,7 +296,7 @@ def _read_artifact(
             {"archive_files": len(manifest), "sample": manifest[:MANIFEST_SAMPLE_SIZE]},
         )
 
-    results = _with_derived_test_ids(PARSERS[match.spec.parser](members, match.params), source)
+    results = _shape(PARSERS[match.spec.parser](members, match.params), source, match.spec)
     if not results:
         LOGGER.warning(
             "  %d members but no parseable results in %s (run %s)", len(members), match.name, run_id
@@ -267,31 +312,37 @@ def _read_artifact(
     return None
 
 
-def _with_derived_test_ids(results: list[Any], source: SourceSpec) -> list[Any]:
-    """Fill in an assigned test ID from the test name, for a source that keeps it there.
+def _shape(results: list[Any], source: SourceSpec, spec: ArtifactSpec) -> list[Any]:
+    """Apply the source's and artifact's policies to freshly parsed results.
 
-    Most suites publish their ID as an Allure label or a JUnit property, which
-    the parsers read. The Multi-LLM Evaluation suites write it into the
-    function name instead - ``MQC_CMN_UNI_112016_red_when_...`` - so the ID is
-    recovered here, after parsing, where the source's configuration is known.
-    The parsers stay format readers and never learn about one source's naming.
-    An ID a parser already found is never overwritten.
+    Two adjustments, both made here rather than in the parsers because both
+    depend on configuration the parsers never see, and the parsers should stay
+    format readers that know nothing about any one source:
+
+    - **An assigned ID recovered from the test name**, for a suite that writes
+      it there - ``MQC_CMN_UNI_112016_red_when_...`` - instead of publishing a
+      label or property. An ID a parser already found is never overwritten.
+    - **Steps dropped from passing and skipped results**, where the artifact's
+      step policy is ``failures``. The result is marked ``steps_omitted`` so
+      the record still says the source recorded steps.
 
     Args:
         results: Parsed results from one artifact.
         source: The repository they came from.
+        spec: The artifact pattern that matched.
 
     Returns:
-        The same results, with ``test_id`` set wherever the name carries one.
+        The adjusted results.
     """
-    if source.test_id_from_name is None:
-        return results
-    return [
-        result
-        if result.test_id
-        else replace(result, test_id=source.derived_test_id(result.test_name))
-        for result in results
-    ]
+    shaped: list[Any] = []
+    for result in results:
+        changes: dict[str, Any] = {}
+        if not result.test_id and source.test_id_from_name is not None:
+            changes["test_id"] = source.derived_test_id(result.test_name)
+        if spec.steps == "failures" and result.steps and result.status in (PASSED, SKIPPED):
+            changes.update(steps=(), steps_omitted=True)
+        shaped.append(replace(result, **changes) if changes else result)
+    return shaped
 
 
 def _persist(
@@ -325,6 +376,22 @@ def _persist(
     written = context.store.append_results(source.slug, month, rows)
     summary.results_written += written
     summary.by_repo[source.repo] += written
+    # Ledgered only after its rows are on disk, so an interrupted collection
+    # reads the artifact again rather than skipping rows it never wrote.
+    context.store.append_artifacts(
+        source.slug,
+        month,
+        [
+            {
+                "repo": source.repo,
+                "artifact_id": match.artifact_id,
+                "name": match.name,
+                "run_id": run_id,
+                "created_at": match.artifact.get("created_at"),
+                "results": len(rows),
+            }
+        ],
+    )
 
 
 def _record_anomaly(

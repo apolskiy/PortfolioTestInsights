@@ -3,7 +3,7 @@ Aleksandr Polskiy
 # PortfolioTestInsights
 
 A read-only collector that pulls test results out of the GitHub Actions
-artifacts of the portfolio's four test suites, normalizes three different
+artifacts of the portfolio's six test suites, normalizes three different
 per-test formats onto one schema, and keeps the combined history in a durable
 record that outlives GitHub's artifact retention.
 
@@ -15,7 +15,7 @@ was being deleted on a rolling 90-day clock, because for public repositories 90
 days is GitHub's retention *maximum* and not merely its default. No setting
 prevents it; persisting the data elsewhere is the only mechanism there is.
 
-> **Documentation status:** describes **v0.3.1**, reviewed 2026-08-18.
+> **Documentation status:** describes **v0.5.0**, reviewed 2026-11-10.
 > Each section carries the release and date its content last changed, so a
 > reader arriving at a later version can see at a glance which parts moved. This
 > file always describes the *current* release; the reasoning behind the design,
@@ -25,14 +25,21 @@ prevents it; persisting the data elsewhere is the only mechanism there is.
 
 ## 1. What it collects
 
-<sub>v0.3.0 &middot; 2026-08-17</sub>
+<sub>v0.5.0 &middot; 2026-11-10</sub>
 
 | Repository | Artifact | Format |
 |---|---|---|
 | PlaywrightAPWebsiteAutomation | `execution-reports`, `allure-results-*` | Allure report, Allure raw |
 | CountryWeather | `qa-artifacts` | Allure report |
 | VM-Deployment-and-Configuration | `allure-results` | Allure raw |
-| PublicAP | `emulator-reports-{os}-py{version}` | JUnit XML |
+| PublicAP | `emulator-reports-{os}-py{version}`, `image-reports-{image}` | JUnit XML |
+| AP-Harness-QC | `mqc-reports-{unit,system}-none-replay-ubuntu*`, once per day | Allure raw |
+| AP-Model-QC | preconditions (once per day), P0/P1/P2-P4 gate bands, live evaluation runs | Allure raw |
+
+The two Multi-LLM Evaluation repositories upload far more than the other four
+combined, so for their gate artifacts only the Ubuntu leg is read and steps are
+kept on failing results only. Live evaluation runs are kept in full. See
+[DESIGN.md §8](DESIGN.md).
 
 **As of the first backfill: 13,458 result rows across 234 distinct tests and 136
 runs, reaching back to 2026-05-21.**
@@ -59,12 +66,12 @@ Downloading artifacts requires authentication even for public repositories,
 which is the only reason a token is needed.
 
 * **CI**: a fine-grained PAT stored as `PORTFOLIO_READ_TOKEN`, resource owner
-  `apolskiy`, repository access limited to the four source repositories,
+  `apolskiy`, repository access limited to the six source repositories,
   permission **Actions: read** and nothing else. (Fine-grained tokens always
   carry `Metadata: read`; no further scope is required, because every endpoint
   PortfolioTestInsights calls is under `/actions/`.)
 
-  **Stored in this repository only.** The token's *scope* spans four
+  **Stored in this repository only.** The token's *scope* spans six
   repositories, but the secret lives in exactly one - the repository whose
   workflow makes the calls. The built-in `GITHUB_TOKEN` cannot substitute: it is
   scoped to the repository running the workflow, so it cannot read another's

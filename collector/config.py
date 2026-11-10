@@ -18,6 +18,17 @@ import yaml
 #: Parser names accepted in the config, matching the modules in collector.parsers.
 VALID_PARSERS: Final[frozenset[str]] = frozenset({"allure_raw", "allure_report", "junit"})
 
+#: Step policies an artifact may declare. ``all`` keeps every result's steps;
+#: ``failures`` keeps them only where a result did not pass or skip, because a
+#: step list is read to explain a failure and is most of a row's size.
+STEP_POLICIES: Final[frozenset[str]] = frozenset({"all", "failures"})
+
+#: Run-selection policies an artifact may declare. ``every`` reads every
+#: matching artifact; ``latest_per_day`` reads only the newest per completed UTC
+#: day and parameter set, for tiers whose value is a daily record that they held
+#: rather than a row for every push.
+KEEP_POLICIES: Final[frozenset[str]] = frozenset({"every", "latest_per_day"})
+
 #: Default location of the source configuration, relative to the repository root.
 DEFAULT_CONFIG_PATH: Final[Path] = Path("config") / "sources.yaml"
 
@@ -85,11 +96,15 @@ class ArtifactSpec:
             become parameter columns on every result parsed from it.
         parser: Which parser reads the extracted files.
         glob: fnmatch pattern selecting members inside the artifact zip.
+        steps: Step policy, one of :data:`STEP_POLICIES`.
+        keep: Run-selection policy, one of :data:`KEEP_POLICIES`.
     """
 
     pattern: re.Pattern[str]
     parser: str
     glob: str
+    steps: str = "all"
+    keep: str = "every"
 
     def match_params(self, artifact_name: str) -> dict[str, str] | None:
         """Match an artifact name and extract its parameter groups.
@@ -302,4 +317,13 @@ def _build_artifact(item: dict, repo: str, config_path: Path) -> ArtifactSpec:
             f"{config_path}: '{repo}' artifact pattern '{name}' is invalid: {error}"
         ) from error
 
-    return ArtifactSpec(pattern=pattern, parser=parser, glob=glob)
+    steps = str(item.get("steps") or "all")
+    keep = str(item.get("keep") or "every")
+    for key, value, allowed in (("steps", steps, STEP_POLICIES), ("keep", keep, KEEP_POLICIES)):
+        if value not in allowed:
+            raise ConfigError(
+                f"{config_path}: '{repo}' artifact '{name}' has {key} '{value}' "
+                f"(known: {', '.join(sorted(allowed))})"
+            )
+
+    return ArtifactSpec(pattern=pattern, parser=parser, glob=glob, steps=steps, keep=keep)

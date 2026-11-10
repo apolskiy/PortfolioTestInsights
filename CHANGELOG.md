@@ -17,6 +17,51 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.5.0 - 2026-11-10
+
+### Added
+
+- **AP-Harness-QC and AP-Model-QC as sources** (codes `MQC-H`, `MQC-M`). From
+  the harness: the unit and system tiers. From the model repository: the
+  preconditions (its unit tests, which must pass before any engine is
+  measured), the P0, P1 and P2-P4 bands of each engine's gate, and the live
+  evaluation ladder, which has not yet run and is configured so that its first
+  runs are collected. Consumer artifacts are not collected: they are
+  AP-Model-QC's own tests run against a harness change.
+- **`steps: all | failures`, a per-artifact step policy.** `failures` drops the
+  steps of passing and skipped results and marks the row `steps_omitted`, so
+  `has_steps` still says whether the source recorded steps. Steps were two
+  thirds of a QC row's size and carry nothing to diagnose on a pass.
+- **`keep: every | latest_per_day`, a per-artifact selection policy.**
+  `latest_per_day` reads only the newest artifact per completed UTC day and
+  parameter set. Used for the QC unit tiers, which run on every push and must be
+  green on main by rule, so one run a day records that they held. Today is
+  excluded so that a day is not represented by whichever run happened to finish
+  first.
+- **An artifacts ledger, `<month>.artifacts.ndjson`.** Each artifact is recorded
+  once read, and later collections skip it without downloading. Without it a
+  daily collection re-downloads every artifact still within retention, which
+  for the QC repositories is over a gigabyte a day.
+
+### Changed
+
+- **Partition files are routed by explicit suffix.** Results were previously
+  whatever was not runs or anomalies, so the new ledger would have been read as
+  results. Every kind is now matched positively and an unknown file is skipped
+  with a warning.
+- **Only the Ubuntu leg of a QC gate artifact is collected.** The Windows leg
+  replays the same recordings, so it doubled the volume without adding an
+  observation of anything that can differ.
+
+Measured before committing: a full backfill of both QC repositories would have
+been about 1.5 GB against an 18 MB record, with single monthly partitions over
+GitHub's 100 MB file limit. Under these policies the backfill of both is 61,857
+results in 99 MB across September to November, the largest partition
+AP-Model-QC's October at 42.9 MB. Development of both repositories is complete,
+so this is bounded history: from here only the live evaluation runs, which are
+dispatched by hand, add to it. Forty P0-P4 artifacts from failed runs on
+2026-10-13 to 2026-10-15 held only `carry.json` and are recorded as anomalies.
+
 ## v0.4.0 - 2026-11-10
 
 ### Added
