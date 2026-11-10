@@ -16,7 +16,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 | Repo | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
 | CWA | 41 | 17 | 1552 | 15 | 15 |
-| PAWA | 68 | 41 | 3847 | 21 | 21 |
+| PAWA | 69 | 41 | 3931 | 21 | 21 |
 | PAP | 25 | 42 | 6280 | 0 | 0 |
 | VMD | 23 | 140 | 3596 | 0 | 0 |
 
@@ -60,16 +60,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repo | Test ID | Test | Flips | Observations |
 |---|---|---|---:|---:|
-| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 8 | 33 |
-| PAWA | PAWA_10033 | test_landing_page_publishes_the_actual_suite_size | 8 | 33 |
+| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 8 | 34 |
+| PAWA | PAWA_10033 | test_landing_page_publishes_the_actual_suite_size | 8 | 34 |
 | CWA | CWA_10006 | test_country_present_in_region | 4 | 150 |
-| PAWA | PAWA_10038 | test_mobile_navigation_wraps_onto_multiple_rows | 4 | 68 |
-| PAWA | PAWA_10035 | test_desktop_navigation_renders_on_a_single_row | 4 | 68 |
+| PAWA | PAWA_10038 | test_mobile_navigation_wraps_onto_multiple_rows | 4 | 69 |
+| PAWA | PAWA_10035 | test_desktop_navigation_renders_on_a_single_row | 4 | 69 |
 | CWA | CWA_10009 | test_forecast_by_city | 2 | 250 |
 | CWA | CWA_10001 | test_country_by_name | 2 | 250 |
-| PAWA | PAWA_10031 | test_documentation_link_opens_in_a_hardened_new_tab | 2 | 227 |
-| PAWA | PAWA_10028 | test_project_panel_publishes_a_documentation_link | 2 | 227 |
-| PAWA | PAWA_10039 | test_mobile_skills_matrix_hides_column_headers | 2 | 68 |
+| PAWA | PAWA_10031 | test_documentation_link_opens_in_a_hardened_new_tab | 2 | 233 |
+| PAWA | PAWA_10028 | test_project_panel_publishes_a_documentation_link | 2 | 233 |
+| PAWA | PAWA_10039 | test_mobile_skills_matrix_hides_column_headers | 2 | 69 |
 
 ## Duration
 
@@ -78,11 +78,11 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 | Repo | Test ID | Test | Median | p95 | p95/median | Runs |
 |---|---|---|---:|---:|---:|---:|
 | PAP | PAP_10005 | test_undelayed_request_reports_zero | 2 ms | 9 ms | 4.5x | 10 |
-| PAWA | PAWA_10002 | test_route_loads_without_console_or_network_errors | 72 ms | 269 ms | 3.8x | 124 |
+| PAWA | PAWA_10002 | test_route_loads_without_console_or_network_errors | 72 ms | 269 ms | 3.7x | 127 |
 | PAP | PAP_10031 | test_aborted_requests_render_their_own_status | 1 ms | 3 ms | 3.0x | 60 |
-| PAWA | PAWA_10001 | test_route_responds_with_http_200 | 114 ms | 312 ms | 2.7x | 124 |
-| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 86 ms | 204 ms | 2.4x | 29 |
+| PAWA | PAWA_10001 | test_route_responds_with_http_200 | 114 ms | 312 ms | 2.7x | 127 |
 | VMD | VMD_10103 | test_volume_label | 23 ms | 49 ms | 2.1x | 20 |
+| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 86 ms | 176 ms | 2.0x | 30 |
 | PAP | PAP_10028 | test_unsupported_code_returns_404 | 1 ms | 2 ms | 2.0x | 420 |
 | PAP | PAP_10029 | test_unroutable_path_returns_404 | 1 ms | 2 ms | 2.0x | 240 |
 | PAP | PAP_10036 | test_uninterpretable_delay_yields_the_sentinel | 1 ms | 2 ms | 2.0x | 140 |
@@ -99,7 +99,7 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 | Repo | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
-| PlaywrightAPWebsiteAutomation | 3847 | 3847 | 492 | allure_raw,allure_report |
+| PlaywrightAPWebsiteAutomation | 3931 | 3931 | 576 | allure_raw,allure_report |
 | PublicAP | 6280 | 0 | 1144 | junit |
 | VM-Deployment-and-Configuration | 3596 | 299 | 348 | allure_raw |
 
