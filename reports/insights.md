@@ -8,7 +8,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 |---|---|---:|---|
 | CWA | [apolskiy/CountryWeather](https://github.com/apolskiy/CountryWeather) | 17 | CWA_10001 .. CWA_10009 (+8 without one) |
 | PAWA | [apolskiy/PlaywrightAPWebsiteAutomation](https://github.com/apolskiy/PlaywrightAPWebsiteAutomation) | 41 | PAWA_10001 .. PAWA_10042 (+1 without one) |
-| PAP | [apolskiy/PublicAP](https://github.com/apolskiy/PublicAP) | 36 | PAP_10007 .. PAP_10042 |
+| PAP | [apolskiy/PublicAP](https://github.com/apolskiy/PublicAP) | 42 | PAP_10001 .. PAP_10042 |
 | VMD | [apolskiy/VM-Deployment-and-Configuration](https://github.com/apolskiy/VM-Deployment-and-Configuration) | 140 | VMD_10001 .. VMD_10140 |
 
 ## Inventory
@@ -16,9 +16,9 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 | Repo | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
 | CWA | 41 | 17 | 1552 | 15 | 15 |
-| PAWA | 66 | 41 | 3679 | 21 | 21 |
-| PAP | 14 | 36 | 5568 | 0 | 0 |
-| VMD | 22 | 140 | 3422 | 0 | 0 |
+| PAWA | 69 | 41 | 3931 | 21 | 21 |
+| PAP | 25 | 42 | 6280 | 0 | 0 |
+| VMD | 23 | 140 | 3596 | 0 | 0 |
 
 ## Same-input disagreement
 
@@ -60,16 +60,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repo | Test ID | Test | Flips | Observations |
 |---|---|---|---:|---:|
-| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 8 | 31 |
-| PAWA | PAWA_10033 | test_landing_page_publishes_the_actual_suite_size | 8 | 31 |
+| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 8 | 34 |
+| PAWA | PAWA_10033 | test_landing_page_publishes_the_actual_suite_size | 8 | 34 |
 | CWA | CWA_10006 | test_country_present_in_region | 4 | 150 |
-| PAWA | PAWA_10038 | test_mobile_navigation_wraps_onto_multiple_rows | 4 | 66 |
-| PAWA | PAWA_10035 | test_desktop_navigation_renders_on_a_single_row | 4 | 66 |
+| PAWA | PAWA_10038 | test_mobile_navigation_wraps_onto_multiple_rows | 4 | 69 |
+| PAWA | PAWA_10035 | test_desktop_navigation_renders_on_a_single_row | 4 | 69 |
 | CWA | CWA_10009 | test_forecast_by_city | 2 | 250 |
 | CWA | CWA_10001 | test_country_by_name | 2 | 250 |
-| PAWA | PAWA_10031 | test_documentation_link_opens_in_a_hardened_new_tab | 2 | 215 |
-| PAWA | PAWA_10028 | test_project_panel_publishes_a_documentation_link | 2 | 215 |
-| PAWA | PAWA_10039 | test_mobile_skills_matrix_hides_column_headers | 2 | 66 |
+| PAWA | PAWA_10031 | test_documentation_link_opens_in_a_hardened_new_tab | 2 | 233 |
+| PAWA | PAWA_10028 | test_project_panel_publishes_a_documentation_link | 2 | 233 |
+| PAWA | PAWA_10039 | test_mobile_skills_matrix_hides_column_headers | 2 | 69 |
 
 ## Duration
 
@@ -77,43 +77,72 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 
 | Repo | Test ID | Test | Median | p95 | p95/median | Runs |
 |---|---|---|---:|---:|---:|---:|
-| PAWA | PAWA_10002 | test_route_loads_without_console_or_network_errors | 70 ms | 269 ms | 3.8x | 118 |
-| PAP | PAP_10031 | test_aborted_requests_render_their_own_status | 1 ms | 3 ms | 3.0x | 56 |
-| PAWA | PAWA_10001 | test_route_responds_with_http_200 | 116 ms | 312 ms | 2.7x | 118 |
-| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 86 ms | 204 ms | 2.4x | 27 |
-| VMD | VMD_10103 | test_volume_label | 21 ms | 49 ms | 2.3x | 19 |
-| PAP | PAP_10028 | test_unsupported_code_returns_404 | 1 ms | 2 ms | 2.0x | 392 |
-| PAP | PAP_10029 | test_unroutable_path_returns_404 | 1 ms | 2 ms | 2.0x | 224 |
-| VMD | VMD_10131 | test_sensitive_to_each_file | 1 ms | 2 ms | 2.0x | 132 |
-| PAP | PAP_10036 | test_uninterpretable_delay_yields_the_sentinel | 1 ms | 2 ms | 2.0x | 120 |
-| VMD | VMD_10130 | test_stable | 1 ms | 2 ms | 2.0x | 22 |
+| PAP | PAP_10005 | test_undelayed_request_reports_zero | 2 ms | 9 ms | 4.5x | 10 |
+| PAWA | PAWA_10002 | test_route_loads_without_console_or_network_errors | 72 ms | 269 ms | 3.7x | 127 |
+| PAP | PAP_10031 | test_aborted_requests_render_their_own_status | 1 ms | 3 ms | 3.0x | 60 |
+| PAWA | PAWA_10001 | test_route_responds_with_http_200 | 114 ms | 312 ms | 2.7x | 127 |
+| VMD | VMD_10103 | test_volume_label | 23 ms | 49 ms | 2.1x | 20 |
+| PAWA | PAWA_10034 | test_case_study_publishes_the_actual_suite_size | 86 ms | 176 ms | 2.0x | 30 |
+| PAP | PAP_10028 | test_unsupported_code_returns_404 | 1 ms | 2 ms | 2.0x | 420 |
+| PAP | PAP_10029 | test_unroutable_path_returns_404 | 1 ms | 2 ms | 2.0x | 240 |
+| PAP | PAP_10036 | test_uninterpretable_delay_yields_the_sentinel | 1 ms | 2 ms | 2.0x | 140 |
+| VMD | VMD_10131 | test_sensitive_to_each_file | 1 ms | 2 ms | 2.0x | 138 |
 
 ## Duration error budget
 
 A run breaches when it exceeds **3x** that test's baseline median. The budget allows **10%** of the trailing **20** runs to breach before it is spent. Tests with fewer than 10 observations in the window, or a baseline median under 100 ms, are omitted - a multiple of a millisecond is measurement noise rather than degradation.
 
-**No test breached its objective in the trailing window.** 78 tests carried enough observations to judge; the rest were omitted by the thresholds above rather than passing quietly.
+**No test breached its objective in the trailing window.** 79 tests carried enough observations to judge; the rest were omitted by the thresholds above rather than passing quietly.
 
 ## What this record cannot tell you
 
 | Repo | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
-| PlaywrightAPWebsiteAutomation | 3679 | 3679 | 324 | allure_raw,allure_report |
-| PublicAP | 5568 | 0 | 432 | junit |
-| VM-Deployment-and-Configuration | 3422 | 286 | 174 | allure_raw |
+| PlaywrightAPWebsiteAutomation | 3931 | 3931 | 576 | allure_raw,allure_report |
+| PublicAP | 6280 | 0 | 1144 | junit |
+| VM-Deployment-and-Configuration | 3596 | 299 | 348 | allure_raw |
 
 The assigned-ID column counts rows carrying one, not tests that have one. All four suites publish IDs, but every row backfilled before 2026-08-16 predates the scheme and can never gain one, since the artifacts are frozen and some have expired. Identity is therefore not `COALESCE(test_id, test_uid)` - that would key earlier rows by uid and later rows by ID, splitting one long history into two short ones at the changeover. An ID observed anywhere for a test is applied to every row for that test instead.
 
 Step coverage is uneven by format, not by choice: JUnit cannot express steps at all, and Allure records them only where a suite used `allure.step`. A step-level statistic computed over the whole corpus would silently describe the subset that has them.
 
-**1 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
+**43 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
 
 ## Artifacts that yielded nothing
 
 | Repo | Run | Artifact | Reason | Created | Run outcome |
 |---|---:|---|---|---|---|
+| CountryWeather | 26200550442 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26200821473 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26200910904 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26206077943 | qa-artifacts | expired | 2026-05-21 | failure |
 | CountryWeather | 26206359194 | qa-artifacts | no_members_matched | 2026-05-21 | failure |
+| CountryWeather | 26206359194 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26206698579 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26206966828 | qa-artifacts | expired | 2026-05-21 | failure |
+| CountryWeather | 26207246753 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26207455811 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26207952023 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26238310790 | qa-artifacts | expired | 2026-05-21 | success |
+| CountryWeather | 26547836779 | qa-artifacts | expired | 2026-05-28 | success |
+| CountryWeather | 27729019399 | qa-artifacts | expired | 2026-06-18 | failure |
+| CountryWeather | 27737654656 | qa-artifacts | expired | 2026-06-18 | failure |
+| CountryWeather | 27738178599 | qa-artifacts | expired | 2026-06-18 | success |
+| CountryWeather | 27738707701 | qa-artifacts | expired | 2026-06-18 | success |
+| PlaywrightAPWebsiteAutomation | 30429957860 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30432596741 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30433150718 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30433428104 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30433738479 | allure-results-chromium | expired | 2026-07-29 | success |
+| PlaywrightAPWebsiteAutomation | 30439026830 | allure-results-chromium | expired | 2026-07-29 | failure |
+| PlaywrightAPWebsiteAutomation | 30497185936 | execution-reports | download_failed | 2026-07-29 | success |
+| PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.12 | download_failed | 2026-08-03 | success |
+| PublicAP | 30842805006 | emulator-reports-ubuntu-latest-py3.14 | download_failed | 2026-08-03 | success |
+| PublicAP | 30842805006 | emulator-reports-windows-latest-py3.12 | download_failed | 2026-08-03 | success |
+| PublicAP | 30842805006 | emulator-reports-windows-latest-py3.14 | download_failed | 2026-08-03 | success |
+| PlaywrightAPWebsiteAutomation | 31350661973 | execution-reports | download_failed | 2026-08-10 | failure |
+| CountryWeather | 31999618381 | qa-artifacts | download_failed | 2026-08-17 | success |
 | PlaywrightAPWebsiteAutomation | 31999679216 | execution-reports | no_members_matched | 2026-08-17 | failure |
 | PlaywrightAPWebsiteAutomation | 32000447197 | execution-reports | no_members_matched | 2026-08-17 | failure |
 | PlaywrightAPWebsiteAutomation | 32000475911 | execution-reports | no_members_matched | 2026-08-17 | failure |
