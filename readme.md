@@ -66,13 +66,13 @@ Downloading artifacts requires authentication even for public repositories,
 which is the only reason a token is needed.
 
 * **CI**: a fine-grained PAT stored as `PORTFOLIO_READ_TOKEN`, resource owner
-  `apolskiy`, repository access limited to the six source repositories,
-  permission **Actions: read** and nothing else. (Fine-grained tokens always
-  carry `Metadata: read`; no further scope is required, because every endpoint
-  PortfolioTestInsights calls is under `/actions/`.)
+  `apolskiy`, repository access **public repositories, read-only**. Every
+  source is public, which is the point of a portfolio, so no permission beyond
+  public read is needed: every endpoint PortfolioTestInsights calls is under
+  `/actions/` and readable by any authenticated caller.
 
-  **Stored in this repository only.** The token's *scope* spans six
-  repositories, but the secret lives in exactly one - the repository whose
+  **Stored in this repository only.** The token can read any public
+  repository, but the secret lives in exactly one - the repository whose
   workflow makes the calls. The built-in `GITHUB_TOKEN` cannot substitute: it is
   scoped to the repository running the workflow, so it cannot read another's
   artifacts.
