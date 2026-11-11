@@ -418,6 +418,7 @@ against `^[A-Z]{3,4}_\d{5,8}$`:
 | CountryWeather | `CWA` | `CWA_10001` |
 | PublicAP | `PAP` | `PAP_10001` |
 | VM-Deployment-and-Configuration | `VMD` | `VMD_10001` |
+| AP-Harness-QC, AP-Model-QC (Multi-LLM Evaluation) | `MQC` | `MQC_CMN_UNI_112016`, read from the test name (section 10.2) |
 
 The test name then becomes a **display label** and may change freely; reports
 group and sort by `test_id`. Numbers start at 10001 per repository and are never
@@ -468,6 +469,25 @@ notice than a fork because the row count still looks reasonable.
 PortfolioTestInsights therefore fails ingestion when one `test_id` resolves to more than one
 `test_uid` within a repository, rather than reporting an average over two
 different tests.
+
+> **Amended 2026-11-11.** As written, the rule also failed every rename, since a
+> renamed or moved test is a new `test_uid` claiming the same ID, and carrying
+> one history across a rename is what the ID is for. The first scheduled
+> collection of AP-Harness-QC and AP-Model-QC (run 43016038008) stopped on 38
+> collisions: 33 renames and moves over time, and 5 IDs that two AP-Model-QC
+> tests carried in the same runs in early October, since corrected there. A
+> PlaywrightAPWebsiteAutomation rename (`PAWA_10030`) would have stopped it on
+> its own. The rule is now decided by runs, not by names:
+>
+> - Claimants of one ID that never appear in the same run are a rename: they
+>   share the ID's history.
+> - Claimants that appear in the same run are a duplicate. The claimant seen
+>   most recently keeps the ID; the other keeps its own `test_uid` as its
+>   identity, so two tests are never averaged, and a warning is logged.
+> - The build still fails when the duplicate is present in the latest run in
+>   which the ID's current holder appeared. A duplicate the suite has since
+>   fixed is history that can no longer be corrected, and does not stop the
+>   collection of every other repository.
 
 ### Run identity, and the trap in it
 

@@ -17,6 +17,25 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.5.2 - 2026-11-11
+
+### Fixed
+
+- **A renamed test no longer stops the build.** The index refused any assigned
+  ID claimed by more than one `test_uid`, but a test that is renamed or moved to
+  another module is a new `test_uid` with the same ID, and keeping one history
+  across that is what the ID is for. The first scheduled collection of
+  AP-Harness-QC and AP-Model-QC (run 43016038008) ingested for 14 minutes and
+  then stopped on 38 such claims, so nothing was committed; the
+  PlaywrightAPWebsiteAutomation rename of `PAWA_10030` would have stopped it on
+  its own. Claimants that never share a run are now a rename and share the ID's
+  history. Claimants that share a run are a duplicate: the one seen most
+  recently keeps the ID, the other keeps its own `test_uid`, and a warning is
+  logged. Five AP-Model-QC IDs were duplicated that way in early October and
+  have since been corrected there. The build still fails when a duplicate is
+  present in the latest run of the ID's holder. DESIGN.md §7 records the
+  amendment, and its prefix table now lists `MQC`.
+
 ## v0.5.1 - 2026-11-10
 
 ### Changed

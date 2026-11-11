@@ -1,7 +1,7 @@
 """Build the queryable SQLite index from the append-only NDJSON record.
 
 Created: 2026-08-16
-Last updated: 2026-11-10
+Last updated: 2026-11-11
 
 This file contains the command line ``python -m collector.index`` (``main``);
 ``build``, which rebuilds the index; ``read_partitions``, which reads one kind
@@ -12,8 +12,8 @@ insert functions, one per table; and ``SCHEMA``, which defines the ``runs``,
 It runs after ingestion and before the reports (``make db``), reads nothing but
 ``data/``, and replaces ``build/results.sqlite`` from scratch every time. Every
 report reads only this index, so a figure that is wrong here is wrong on the
-published page; a duplicated assigned ID stops the build before any report
-can run.
+published page; an assigned ID duplicated in the latest run stops the build
+before any report can run.
 
 **Absence is inferred here, not recorded.** A test missing from a run inside its
 own observed lifetime gets a ``not_run`` row with ``source_format='derived'``,
@@ -23,7 +23,10 @@ exist only in the index; the NDJSON record keeps what the artifacts said.
 **Identity is materialized as a column.** An assigned ID observed on any row
 for a ``test_uid`` becomes that test's ``identity`` on every row, including
 rows recorded before the ID existed; a test with no ID keeps its ``test_uid``.
-One ID claimed by two ``test_uid`` values raises ``ValueError``.
+Two ``test_uid`` values claiming one ID in different runs are a rename and
+share the ID's history. Two claiming it in the same run are a duplicate: the
+older is kept apart under its own ``test_uid`` and logged, and a duplicate
+still present in the latest run raises ``ValueError``.
 
 Specified by ``DESIGN.md`` sections 5, 6 and 7.
 """
@@ -294,7 +297,8 @@ def build(data_dir: Path, index_path: Path) -> dict[str, int]:
         ``steps`` and ``anomalies``, for the caller to report.
 
     Raises:
-        ValueError: If one assigned ID is claimed by more than one test.
+        ValueError: If two tests carry one assigned ID in the latest run
+            either appeared in.
     """
     results = read_partitions(data_dir, None)
     runs = read_partitions(data_dir, RUNS_SUFFIX)
@@ -346,7 +350,8 @@ def _insert_results(connection: sqlite3.Connection, results: list[dict[str, Any]
     """Insert result rows, computing the reporting identity for each.
 
     ``identity`` is the assigned ID observed anywhere for the row's
-    ``test_uid``, or the ``test_uid`` itself when none was. It is not
+    ``test_uid``, or the ``test_uid`` itself when none was or when the test
+    duplicated another's ID in the same run. It is not
     ``COALESCE(test_id, test_uid)``, which would split a test's history at the
     moment IDs arrived. Parameters and labels are stored as key-sorted JSON,
     and the two flags as 0 or 1. Design: ``DESIGN.md`` section 7.
@@ -359,7 +364,8 @@ def _insert_results(connection: sqlite3.Connection, results: list[dict[str, Any]
         None
 
     Raises:
-        ValueError: If one assigned ID is claimed by more than one test.
+        ValueError: If two tests carry one assigned ID in the latest run
+            either appeared in.
     """
     assigned = _assigned_identities(results)
     payload = [
@@ -384,33 +390,86 @@ def _insert_results(connection: sqlite3.Connection, results: list[dict[str, Any]
 def _assigned_identities(results: list[dict[str, Any]]) -> dict[str, str]:
     """Map every test that has ever published an assigned ID to that ID.
 
+    Only observed rows are read; synthesized rows copy their ID from an
+    observed one. Claimants of one ID are taken newest first, by the latest
+    run each appeared in. A claimant that never ran alongside an earlier-taken
+    one is a rename and joins the ID's history. A claimant that ran alongside
+    one in the same run is a duplicate: it keeps its own ``test_uid`` as its
+    identity and is logged as a warning. Design: ``DESIGN.md`` section 7.
+
     Args:
         results (list[dict[str, Any]]): Observed and synthesized result rows.
 
     Returns:
         dict[str, str]: ``test_uid`` to assigned ID, for the tests that carry
-        one.
+        one and are not a duplicate of it.
 
     Raises:
-        ValueError: If one ID is claimed by more than one ``test_uid``; the
-            message lists every collision.
+        ValueError: If a duplicate shares the latest run in which the ID's
+            newest claimant appeared, so it is still present in the suite; the
+            message lists every such duplicate.
     """
     by_uid: dict[str, str] = {}
-    claimants: dict[str, set[str]] = defaultdict(set)
+    claims: dict[str, dict[str, set[tuple[str, int, int]]]] = defaultdict(lambda: defaultdict(set))
     for row in results:
         test_id = row.get("test_id")
-        if not test_id:
+        if not test_id or row.get("source_format") == DERIVED_FORMAT:
             continue
         by_uid[row["test_uid"]] = test_id
-        claimants[test_id].add(row["test_uid"])
+        claims[test_id][row["test_uid"]].add((row["repo"], row["run_id"], row["attempt"]))
 
-    collisions = {
-        test_id: sorted(uids) for test_id, uids in claimants.items() if len(uids) > 1
-    }
-    if collisions:
-        detail = "; ".join(f"{test_id} -> {uids}" for test_id, uids in sorted(collisions.items()))
-        raise ValueError(f"Assigned test IDs must be unique per test. Collisions: {detail}")
+    current: list[str] = []
+    for test_id, runs_by_uid in sorted(claims.items()):
+        for duplicate, holder, shared in _duplicates(runs_by_uid):
+            if by_uid.get(duplicate) == test_id:
+                del by_uid[duplicate]
+            detail = f"{test_id}: {duplicate} ran with {holder} in {len(shared)} run(s)"
+            if max(runs_by_uid[holder], key=lambda run: run[1]) in shared:
+                current.append(detail)
+            else:
+                LOGGER.warning("Historical duplicate ID, kept apart: %s", detail)
+
+    if current:
+        raise ValueError(
+            "Assigned test IDs must be unique per test. Duplicates in the latest run: "
+            + "; ".join(current)
+        )
     return by_uid
+
+
+def _duplicates(
+    runs_by_uid: dict[str, set[tuple[str, int, int]]],
+) -> list[tuple[str, str, set[tuple[str, int, int]]]]:
+    """Find the claimants of one ID that ran alongside another claimant.
+
+    Claimants are taken newest first, by the latest run each appeared in, ties
+    broken by ``test_uid``. Each is compared with the claimants already kept:
+    no shared run means a rename, which is kept; a shared run means a
+    duplicate of the first kept claimant it shares one with.
+
+    Args:
+        runs_by_uid (dict[str, set[tuple[str, int, int]]]): For one assigned
+            ID, the ``(repo, run_id, attempt)`` runs each claimant appeared in.
+
+    Returns:
+        list[tuple[str, str, set[tuple[str, int, int]]]]: One
+        ``(duplicate, holder, shared runs)`` per duplicate, empty when every
+        claimant is a rename of the others.
+    """
+    order = sorted(
+        runs_by_uid,
+        key=lambda uid: (max(run_id for _, run_id, _ in runs_by_uid[uid]), uid),
+        reverse=True,
+    )
+    kept: list[str] = []
+    found: list[tuple[str, str, set[tuple[str, int, int]]]] = []
+    for uid in order:
+        holder = next((other for other in kept if runs_by_uid[uid] & runs_by_uid[other]), None)
+        if holder is None:
+            kept.append(uid)
+        else:
+            found.append((uid, holder, runs_by_uid[uid] & runs_by_uid[holder]))
+    return found
 
 
 def _insert_steps(connection: sqlite3.Connection, results: list[dict[str, Any]]) -> None:
@@ -474,7 +533,8 @@ def main(argv: list[str] | None = None) -> int:
         directory does not exist.
 
     Raises:
-        ValueError: If one assigned ID is claimed by more than one test.
+        ValueError: If two tests carry one assigned ID in the latest run
+            either appeared in.
     """
     parser = argparse.ArgumentParser(
         prog="python -m collector.index",
