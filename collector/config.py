@@ -1,9 +1,32 @@
-"""Loading and validation of ``config/sources.yaml``.
+"""Loads and validates ``config/sources.yaml``.
 
-Validation is strict and happens once at startup rather than at the point of
-use. A misspelled parser name or an unparseable artifact pattern should stop the
-run immediately with a message naming the offending entry, not surface hours
-later as a repository that quietly produced no rows.
+Created: 2026-08-16
+Last updated: 2026-11-10
+
+This file contains the records the configuration becomes: :class:`SourceSpec`
+for a repository, :class:`ArtifactSpec` for an artifact pattern within it, and
+:class:`SloPolicy` for the duration error budget. ``load_sources`` and
+``load_slo`` read them, the private ``_build_*`` functions validate each entry,
+and :class:`ConfigError` is what a malformed entry raises. The accepted values
+are the constants ``VALID_PARSERS``, ``STEP_POLICIES`` and ``KEEP_POLICIES``.
+
+Ingestion calls ``load_sources`` before it makes a single request, so a
+``ConfigError`` stops the run with nothing downloaded or written. The specs
+then decide which artifacts are read, which parser reads them, which steps
+survive, and which ID a test carries; the reports call ``load_sources`` again
+for each repository's display code and ``load_slo`` for the budget policy.
+
+**Validated once, at startup.** Every source needs ``repo``, ``prefix`` and a
+non-empty ``artifacts`` list; every artifact needs ``name``, ``parser`` and
+``glob``, a known parser, a ``name`` that compiles as a regex, and policies from
+the accepted sets. A ``test_id_from_name`` pattern must compile and define a
+``test_id`` group.
+
+**Defaults keep earlier entries unchanged.** ``steps`` defaults to ``all``,
+``keep`` to ``every``, and ``code`` to the prefix. A file with no ``slo`` block
+yields the :class:`SloPolicy` defaults.
+
+Specified by ``DESIGN.md`` sections 8 and 10.1.
 """
 
 from __future__ import annotations
@@ -18,15 +41,16 @@ import yaml
 #: Parser names accepted in the config, matching the modules in collector.parsers.
 VALID_PARSERS: Final[frozenset[str]] = frozenset({"allure_raw", "allure_report", "junit"})
 
-#: Step policies an artifact may declare. ``all`` keeps every result's steps;
-#: ``failures`` keeps them only where a result did not pass or skip, because a
-#: step list is read to explain a failure and is most of a row's size.
+#: Added 2026-11-10, for the Multi-LLM Evaluation sources.
+#: STEP POLICIES an artifact may declare. ``all`` keeps every result's steps;
+#: ``failures`` keeps them only where a result did not pass or skip
+#: (``DESIGN.md`` section 8).
 STEP_POLICIES: Final[frozenset[str]] = frozenset({"all", "failures"})
 
-#: Run-selection policies an artifact may declare. ``every`` reads every
+#: Added 2026-11-10, for the Multi-LLM Evaluation sources.
+#: RUN-SELECTION POLICIES an artifact may declare. ``every`` reads every
 #: matching artifact; ``latest_per_day`` reads only the newest per completed UTC
-#: day and parameter set, for tiers whose value is a daily record that they held
-#: rather than a row for every push.
+#: day and parameter set (``DESIGN.md`` section 8).
 KEEP_POLICIES: Final[frozenset[str]] = frozenset({"every", "latest_per_day"})
 
 #: Default location of the source configuration, relative to the repository root.
@@ -34,27 +58,29 @@ DEFAULT_CONFIG_PATH: Final[Path] = Path("config") / "sources.yaml"
 
 
 class ConfigError(ValueError):
-    """Raised when the source configuration is malformed."""
+    """Raised when the source configuration is malformed.
+
+    The message names the configuration file and the offending entry.
+    """
 
 
 @dataclass(frozen=True)
 class SloPolicy:
     """The error-budget policy the report evaluates each test against.
 
-    The objective is a multiple of a test's own established median rather than
-    an absolute duration, because no suite here declares a per-test duration
-    SLA. Seeding an absolute figure from observed history and then reporting
-    against it would be circular, and one figure across tests ranging from a
-    millisecond to half a minute would be meaningless.
+    A run breaches when it exceeds ``tolerance`` times the test's own baseline
+    median; the budget is spent when more than ``budget`` of the trailing
+    window breached. Design: ``DESIGN.md`` section 10.1.
 
     Attributes:
-        window_runs: Trailing runs considered.
-        tolerance: Multiple of the baseline median above which a run breaches.
-        budget: Fraction of the window allowed to breach before it is spent.
-        min_observations: Below this, no verdict is published - a budget
-            computed from a handful of runs is arithmetic, not evidence.
-        floor_ms: Tests whose baseline median falls below this are excluded. A
-            multiple of a millisecond is measurement noise, not degradation.
+        window_runs (int): Trailing runs considered.
+        tolerance (float): Multiple of the baseline median above which a run
+            breaches.
+        budget (float): Fraction of the window allowed to breach before it is
+            spent.
+        min_observations (int): Runs in the window below which no verdict is
+            published.
+        floor_ms (float): Baseline median below which a test is excluded.
     """
 
     window_runs: int = 20
@@ -68,11 +94,12 @@ def load_slo(path: Path | None = None) -> SloPolicy:
     """Read the error-budget policy, falling back to the declared defaults.
 
     Args:
-        path: Location of the YAML file. Defaults to ``config/sources.yaml``.
+        path (Path | None): Location of the YAML file. Defaults to
+            ``config/sources.yaml``.
 
     Returns:
-        The policy. A file with no ``slo`` block yields the defaults rather than
-        an error, so the report works before the policy is tuned.
+        SloPolicy: The policy. A missing ``slo`` block, or a key missing from
+        it, takes the class default rather than raising.
     """
     config_path = path or DEFAULT_CONFIG_PATH
     with open(config_path, encoding="utf-8") as handle:
@@ -92,12 +119,14 @@ class ArtifactSpec:
     """One artifact pattern within a repository.
 
     Attributes:
-        pattern: Compiled regex matched against the artifact name. Named groups
-            become parameter columns on every result parsed from it.
-        parser: Which parser reads the extracted files.
-        glob: fnmatch pattern selecting members inside the artifact zip.
-        steps: Step policy, one of :data:`STEP_POLICIES`.
-        keep: Run-selection policy, one of :data:`KEEP_POLICIES`.
+        pattern (re.Pattern[str]): Compiled regex matched against the artifact
+            name. Named groups become parameter columns on every result parsed
+            from it.
+        parser (str): Which parser reads the extracted files, one of
+            :data:`VALID_PARSERS`.
+        glob (str): fnmatch pattern selecting members inside the artifact zip.
+        steps (str): Step policy, one of :data:`STEP_POLICIES`.
+        keep (str): Run-selection policy, one of :data:`KEEP_POLICIES`.
     """
 
     pattern: re.Pattern[str]
@@ -110,16 +139,17 @@ class ArtifactSpec:
         """Match an artifact name and extract its parameter groups.
 
         Args:
-            artifact_name: Name as reported by the Actions API.
+            artifact_name (str): Name as reported by the Actions API.
 
         Returns:
-            The named groups as a parameter dict when the name matches, or None
-            when it does not. An empty dict is a match with no parameters, which
-            is why None rather than an empty dict signals "no match".
+            dict[str, str] | None: The named groups that matched, as a parameter
+            dict, when the name matches from its start; None when it does not.
+            An empty dict is a match with no parameters, so only None means "no
+            match".
         """
-        # pylint cannot infer the compiled type through a dataclass field and
-        # reports no-member here; the attribute is a re.Pattern at run time, as
-        # every ingestion exercising this path demonstrates.
+        # Added 2026-08-16. pylint cannot infer the compiled type through a
+        # dataclass field and reports no-member here; the attribute is a
+        # re.Pattern at run time, as every ingestion exercising this path shows.
         match = self.pattern.match(artifact_name)  # pylint: disable=no-member
         if match is None:
             return None
@@ -135,18 +165,19 @@ class SourceSpec:
     """One repository and the artifacts worth reading from it.
 
     Attributes:
-        repo: Owner-qualified repository name.
-        prefix: Assigned test-ID prefix for this repository, e.g. ``PAWA``.
-        artifacts: Artifact patterns to look for.
-        code: Short code the report prints for this repository. The prefix,
-            unless two repositories share one: the two Multi-LLM Evaluation
-            repositories both number their tests ``MQC_...``, and a legend in
-            which one code expands to two repositories is not a legend.
-        test_id_from_name: For a suite that writes its assigned ID into the test
-            function's name rather than publishing it as a label or property,
-            the pattern that extracts it - a regex with a ``test_id`` group,
-            matched against the start of the test name. None for every suite
-            that publishes its ID the standard way.
+        repo (str): Owner-qualified repository name.
+        prefix (str): Assigned test-ID prefix for this repository, e.g.
+            ``PAWA``.
+        artifacts (tuple[ArtifactSpec, ...]): Artifact patterns to look for, in
+            file order; the first that matches an artifact wins.
+        code (str): Short code the report prints for this repository; empty
+            means the prefix. Set where two repositories share a prefix
+            (``DESIGN.md`` section 8).
+        test_id_from_name (re.Pattern[str] | None): For a suite that writes its
+            assigned ID into the test function's name, the regex with a
+            ``test_id`` group that extracts it, matched against the start of
+            the name. None for every suite that publishes its ID as a label or
+            property.
     """
 
     repo: str
@@ -160,7 +191,7 @@ class SourceSpec:
         """Return the code the report prints for this repository.
 
         Returns:
-            The configured code, or the prefix when none is configured.
+            str: The configured code, or the prefix when none is configured.
         """
         return self.code or self.prefix
 
@@ -168,16 +199,18 @@ class SourceSpec:
         """Extract an assigned test ID from a test name, where this suite puts it there.
 
         Args:
-            test_name: Test function name with parameters removed.
+            test_name (str): Test function name with parameters removed.
 
         Returns:
-            The ID, or None when this source declares no pattern or the name
-            does not carry one. A name that does not match yields no ID rather
-            than a guessed one, the same rule a malformed label follows.
+            str | None: The ``test_id`` group, or None when this source declares
+            no pattern or the name does not match it. A non-matching name yields
+            no ID rather than a guessed one, the same rule a malformed label
+            follows.
         """
         if self.test_id_from_name is None:
             return None
-        # Same dataclass-field inference gap as ArtifactSpec.match_params.
+        # Added 2026-11-10. Same dataclass-field inference gap as
+        # ArtifactSpec.match_params.
         match = self.test_id_from_name.match(test_name)  # pylint: disable=no-member
         return match.group(TEST_ID_GROUP) if match else None
 
@@ -186,7 +219,7 @@ class SourceSpec:
         """Return the filesystem-safe short name used for data partitions.
 
         Returns:
-            The repository name without its owner, lower-cased.
+            str: The repository name without its owner, lower-cased.
         """
         return self.repo.split("/")[-1].lower()
 
@@ -195,14 +228,17 @@ def load_sources(path: Path | None = None) -> tuple[SourceSpec, ...]:
     """Read and validate the source configuration.
 
     Args:
-        path: Location of the YAML file. Defaults to ``config/sources.yaml``.
+        path (Path | None): Location of the YAML file. Defaults to
+            ``config/sources.yaml``.
 
     Returns:
-        One SourceSpec per configured repository, in file order.
+        tuple[SourceSpec, ...]: One spec per configured repository, in file
+        order.
 
     Raises:
-        ConfigError: If the file is missing a required key, names an unknown
-            parser, or carries an artifact pattern that is not a valid regex.
+        ConfigError: If ``sources`` is missing or empty, an entry lacks a
+            required key, names an unknown parser or policy, or carries a
+            pattern that is not a valid regex.
     """
     config_path = path or DEFAULT_CONFIG_PATH
     with open(config_path, encoding="utf-8") as handle:
@@ -219,14 +255,16 @@ def _build_source(entry: dict, config_path: Path) -> SourceSpec:
     """Validate one repository entry and build its SourceSpec.
 
     Args:
-        entry: One item from the ``sources`` list.
-        config_path: Used only to make error messages locatable.
+        entry (dict): One item from the ``sources`` list.
+        config_path (Path): Used only to make error messages locatable.
 
     Returns:
-        The validated SourceSpec.
+        SourceSpec: The validated spec.
 
     Raises:
-        ConfigError: If a required key is missing or an artifact is invalid.
+        ConfigError: If ``repo``, ``prefix`` or a non-empty ``artifacts`` list is
+            missing, or an artifact or the ``test_id_from_name`` pattern is
+            invalid.
     """
     repo = entry.get("repo")
     if not repo:
@@ -255,17 +293,17 @@ def _build_test_id_pattern(
     """Validate a source's ``test_id_from_name`` pattern.
 
     Args:
-        raw_pattern: The pattern as written in the config, or None.
-        repo: Owning repository, used in error messages.
-        config_path: Used only to make error messages locatable.
+        raw_pattern (str | None): The pattern as written in the config, or None.
+        repo (str): Owning repository, used in error messages.
+        config_path (Path): Used only to make error messages locatable.
 
     Returns:
-        The compiled pattern, or None when the source declares none.
+        re.Pattern[str] | None: The compiled pattern, or None when the source
+        declares none.
 
     Raises:
-        ConfigError: If the pattern will not compile or has no ``test_id``
-            group, either of which would leave every test of the source
-            unidentified without saying why.
+        ConfigError: If the pattern will not compile, or has no ``test_id``
+            group and so could match a name without yielding an ID.
     """
     if not raw_pattern:
         return None
@@ -287,15 +325,18 @@ def _build_artifact(item: dict, repo: str, config_path: Path) -> ArtifactSpec:
     """Validate one artifact entry and build its ArtifactSpec.
 
     Args:
-        item: One item from a repository's ``artifacts`` list.
-        repo: Owning repository, used in error messages.
-        config_path: Used only to make error messages locatable.
+        item (dict): One item from a repository's ``artifacts`` list.
+        repo (str): Owning repository, used in error messages.
+        config_path (Path): Used only to make error messages locatable.
 
     Returns:
-        The validated ArtifactSpec.
+        ArtifactSpec: The validated spec, with ``steps`` defaulting to ``all``
+        and ``keep`` to ``every``.
 
     Raises:
-        ConfigError: If the parser is unknown or the pattern will not compile.
+        ConfigError: If ``name``, ``parser`` or ``glob`` is missing, the parser
+            is unknown, the name will not compile as a regex, or a policy is
+            not one of the accepted values.
     """
     name = item.get("name")
     parser = item.get("parser")

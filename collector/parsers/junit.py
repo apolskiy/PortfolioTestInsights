@@ -1,13 +1,33 @@
 """Parser for pytest's JUnit XML output.
 
-The only per-test format PublicAP publishes. It carries no steps and no Allure
-labels, which is why ``source_format`` and ``has_steps`` exist on every row: a
-report that finds no step data here must be able to tell "the suite recorded
-none" from "this format cannot express any".
+Created: 2026-08-16
+Last updated: 2026-11-10
 
-An assigned test ID can still travel in this format, but only through pytest's
-``record_property`` fixture, which emits a ``<property>`` element inside the
-``<testcase>``. See DESIGN.md section 7.
+This file contains ``parse``, the entry point registered as ``junit``, and the
+private readers that turn one ``<testcase>`` into a :class:`ParsedResult`: its
+outcome and diagnostics, its duration, and its assigned test ID.
+
+Ingestion calls ``parse`` with the XML members of PublicAP's
+``emulator-reports-*`` and ``image-reports-*`` artifacts, the only per-test
+format that suite publishes. The results carry no steps and no labels, and
+``source_format`` on each row records that they came from this format, so a
+report can tell "the suite recorded none" from "this format cannot express
+any".
+
+**One result per ``<testcase>``.** The module is ``classname``, the bracketed
+parameter id of ``name`` becomes ``params['id']``, and the full ``name`` is the
+display name. A document that is not UTF-8 or not well-formed XML is skipped.
+
+**Outcome comes from the child elements.** ``<error>`` is ``broken``,
+``<failure>`` is ``failed``, ``<skipped>`` is ``skipped``, checked in that
+order; a case with none of them passed. The element's ``message`` attribute is
+the message and its text is the trace.
+
+**An assigned ID travels as a property.** pytest's ``record_property`` emits
+``<property name="test_id" value="..."/>`` inside the ``<testcase>``; only a
+value matching ``TEST_ID_PATTERN`` is kept.
+
+Specified by ``DESIGN.md`` sections 4.3, 6 and 7.
 """
 
 from __future__ import annotations
@@ -25,9 +45,10 @@ from collector.models import (
     strip_parameters,
 )
 
-#: Child elements that override the default "passed" outcome, in the order they
-#: are checked. An ``error`` is a fault in the harness rather than a failed
-#: assertion, so it maps to ``broken`` rather than to ``failed``.
+#: OUTCOME ELEMENTS, per ``DESIGN.md`` section 4.3: child elements that override
+#: the default "passed" outcome, in the order they are checked. An ``error`` is
+#: a fault in the harness rather than a failed assertion, so it maps to
+#: ``broken``.
 _OUTCOME_ELEMENTS: Final[tuple[tuple[str, str], ...]] = (
     ("error", BROKEN),
     ("failure", FAILED),
@@ -42,13 +63,15 @@ def parse(members: dict[str, bytes], base_params: dict[str, str]) -> list[Parsed
     """Parse every JUnit XML document in an extracted artifact.
 
     Args:
-        members: Archive member path to file contents.
-        base_params: Parameters derived from the artifact name - for PublicAP
-            the operating system and Python version of the matrix leg.
+        members (dict[str, bytes]): Archive member path to file contents.
+        base_params (dict[str, str]): Parameters derived from the artifact name;
+            for PublicAP, the operating system and Python version of the matrix
+            leg, or the image.
 
     Returns:
-        One ParsedResult per ``<testcase>``. A document that will not parse is
-        skipped rather than aborting the artifact.
+        list[ParsedResult]: One result per ``<testcase>``, at any depth. A
+        document that will not decode or parse is skipped without aborting the
+        artifact.
     """
     results: list[ParsedResult] = []
     for content in members.values():
@@ -65,11 +88,12 @@ def _build_result(case: ElementTree.Element, base_params: dict[str, str]) -> Par
     """Convert one ``<testcase>`` element into a ParsedResult.
 
     Args:
-        case: The XML element.
-        base_params: Parameters derived from the artifact name.
+        case (ElementTree.Element): The XML element.
+        base_params (dict[str, str]): Parameters derived from the artifact name.
 
     Returns:
-        The normalized result.
+        ParsedResult: The normalized result, with no labels, history id or
+        steps.
     """
     raw_name = case.get("name", "")
     base_name, parameter_id = strip_parameters(raw_name)
@@ -99,18 +123,17 @@ def _build_result(case: ElementTree.Element, base_params: dict[str, str]) -> Par
 def _outcome(case: ElementTree.Element) -> tuple[str, str | None, str | None]:
     """Determine a test case's status, failure message and stack trace.
 
-    JUnit splits the two diagnostics across an attribute and the element body:
-    ``message`` holds the assertion summary, and the element text holds the
-    traceback pytest captured. Both are kept, because the summary says what
-    broke and only the body says where.
+    The first child of ``_OUTCOME_ELEMENTS`` present decides; its ``message``
+    attribute is the assertion summary and its text the traceback pytest
+    captured. Design: ``DESIGN.md`` section 4.3.
 
     Args:
-        case: The XML element.
+        case (ElementTree.Element): The XML element.
 
     Returns:
-        A ``(status, message, trace)`` triple. JUnit states a non-passing
-        outcome by adding a child element, so the absence of all of them is a
-        pass.
+        tuple[str, str | None, str | None]: A ``(status, message, trace)``
+        triple, message and trace stripped and None when empty. With no
+        outcome element the case passed: ``(PASSED, None, None)``.
     """
     for tag, status in _OUTCOME_ELEMENTS:
         element = case.find(tag)
@@ -125,11 +148,11 @@ def _duration_ms(case: ElementTree.Element) -> int | None:
     """Convert the ``time`` attribute from seconds to milliseconds.
 
     Args:
-        case: The XML element.
+        case (ElementTree.Element): The XML element.
 
     Returns:
-        Milliseconds elapsed, or None when the attribute is missing or is not a
-        number.
+        int | None: Milliseconds elapsed, truncated toward zero, or None when
+        the attribute is missing or is not a number.
     """
     raw_time = case.get("time")
     if raw_time is None:
@@ -144,10 +167,11 @@ def _test_id(case: ElementTree.Element) -> str | None:
     """Read an assigned test ID from the case's ``<properties>`` block.
 
     Args:
-        case: The XML element.
+        case (ElementTree.Element): The XML element.
 
     Returns:
-        The ID when a well-formed one is present, otherwise None.
+        str | None: The first ``test_id`` property whose stripped value matches
+        ``TEST_ID_PATTERN``, otherwise None.
     """
     for prop in case.iter("property"):
         if prop.get("name") == TEST_ID_PROPERTY:

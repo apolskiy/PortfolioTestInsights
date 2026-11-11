@@ -1,17 +1,41 @@
 """Ingestion: pull artifacts from the Actions API and append them to the record.
 
-The order of operations is dictated by one measurement. Artifact listings carry
-a ``workflow_run`` block, so a single paginated listing per repository is enough
-to associate every artifact with its run; fetching the run per artifact would
-multiply the request count for nothing.
+Created: 2026-08-16
+Last updated: 2026-11-10
 
-Two kinds of nothing are distinguished carefully. An **expired** artifact is
-routine: for public repositories GitHub's 90-day retention is a maximum rather
-than a default, so data loss is the steady state and must not fail a scheduled
-job. An artifact that is **present but empty** is the opposite - the upload step
-worked, so the run believed it had something to publish, and it did not. That is
-evidence of a reporting misconfiguration in the source repository, and it is
-recorded as data rather than left in a log line that scrolls away.
+This file contains the command line ``python -m collector.ingest``
+(``build_parser``, ``main``); ``ingest_repository``, which collects one
+configured repository; the private steps it runs per artifact (select, read,
+shape, persist, or record an anomaly); and the records those steps pass around:
+:class:`IngestContext`, :class:`ArtifactMatch`, :class:`AnomalyReport` and
+:class:`IngestSummary`. The ``REASON_*`` constants name why an artifact yielded
+nothing.
+
+It is the first stage and the only one that reads the network: the
+configuration is loaded, each repository's runs and artifacts are listed once,
+and every artifact read here becomes rows in ``data/``, which ``make db`` turns
+into the index the reports query. A failed listing ends the collection with
+exit code 1 and nothing further written; a failed download costs only that
+artifact, which is recorded as an anomaly.
+
+**Per repository, in order.** Runs and artifacts are listed once each; every
+artifact is matched against the configured patterns, the first match supplying
+its spec and its name parameters; ``keep`` policies select which matches to
+read; matches the ledger already holds are counted and skipped without
+download.
+
+**Per artifact, one outcome.** An artifact either yields results, which are
+shaped by the source's ``test_id_from_name`` and the artifact's ``steps``
+policy, then appended with its run row and finally ledgered; or it yields an
+anomaly naming the reason: ``expired``, ``no_run_linked``,
+``download_failed``, ``no_members_matched`` or ``no_results_parsed``. Every
+reason but ``expired`` is actionable and is flagged in the summary.
+
+**Dry run writes nothing.** ``--dry-run`` downloads and parses everything and
+counts what would be written; no result, run, anomaly or ledger row reaches
+disk.
+
+Specified by ``DESIGN.md`` sections 8 and 9.
 """
 
 from __future__ import annotations
@@ -36,24 +60,25 @@ from collector.store import NdjsonStore
 
 LOGGER = logging.getLogger(__name__)
 
-#: Why an artifact produced no results. Recorded on every anomaly row so that a
-#: report can separate routine retention loss from a suite that is misreporting.
+#: ANOMALY REASONS: why an artifact produced no results. Recorded on every
+#: anomaly row so a report can separate routine retention loss from a suite
+#: that is misreporting.
 REASON_EXPIRED: Final[str] = "expired"
 REASON_NO_RUN: Final[str] = "no_run_linked"
 REASON_DOWNLOAD_FAILED: Final[str] = "download_failed"
 REASON_NO_MEMBERS: Final[str] = "no_members_matched"
 REASON_NO_RESULTS: Final[str] = "no_results_parsed"
 
-#: Reasons that indicate a fault in the source repository rather than routine
-#: retention. These are the ones worth acting on.
+#: ACTIONABLE, per ``DESIGN.md`` section 9: reasons that indicate a fault in the
+#: source repository or the configuration rather than routine retention.
 ACTIONABLE_REASONS: Final[frozenset[str]] = frozenset(
     {REASON_NO_MEMBERS, REASON_NO_RESULTS, REASON_DOWNLOAD_FAILED, REASON_NO_RUN}
 )
 
 
-#: How many archive member paths to record when an artifact yields nothing.
-#: Enough to recognize the layout, not so many that one bad artifact writes a
-#: manifest of several hundred lines into the durable record.
+#: BOUNDED, per ``DESIGN.md`` section 9: how many archive member paths an
+#: anomaly row records when an artifact yields nothing. Enough to recognize the
+#: layout, not a manifest of several hundred lines.
 MANIFEST_SAMPLE_SIZE: Final[int] = 12
 
 
@@ -62,11 +87,11 @@ class AnomalyReport:
     """Why an artifact yielded no results, with the evidence to diagnose it.
 
     Attributes:
-        reason: One of the module-level reason constants.
-        detail: Free-form diagnostic context - the exception text for a failed
-            download, or a sample of what the archive actually contained when
-            the configured glob matched nothing. Without this, a wrong glob and
-            an empty report are the same log line and want opposite fixes.
+        reason (str): One of the ``REASON_*`` constants.
+        detail (dict[str, Any]): Diagnostic context: the exception text for a
+            failed download, or the file count and a sample of up to
+            ``MANIFEST_SAMPLE_SIZE`` paths when no member matched or none
+            parsed. Empty for ``expired`` and ``no_run_linked``.
     """
 
     reason: str
@@ -77,15 +102,13 @@ class AnomalyReport:
 class IngestContext:
     """The collaborators every ingestion step needs, passed as one value.
 
-    Grouping these rather than threading four parameters through every helper
-    keeps the call sites readable and means adding a fifth collaborator later
-    does not touch six signatures.
+    Design: ``DESIGN.md`` section 5.
 
     Attributes:
-        client: Authenticated API client.
-        store: Destination record.
-        summary: Counters updated in place as work proceeds.
-        dry_run: When True, parse everything and write nothing.
+        client (GitHubClient): Authenticated API client.
+        store (NdjsonStore): Destination record.
+        summary (IngestSummary): Counters updated in place as work proceeds.
+        dry_run (bool): When True, parse everything and write nothing.
     """
 
     client: GitHubClient
@@ -99,10 +122,12 @@ class ArtifactMatch:
     """One artifact, the spec that matched it, and the run that produced it.
 
     Attributes:
-        artifact: Artifact object from the API.
-        spec: The configured pattern it matched.
-        params: Parameters extracted from the artifact name, such as a matrix leg.
-        run: The run that produced it, or None when it cannot be resolved.
+        artifact (dict[str, Any]): Artifact object from the API.
+        spec (ArtifactSpec): The configured pattern it matched.
+        params (dict[str, str]): Parameters extracted from the artifact name,
+            such as a matrix leg.
+        run (dict[str, Any] | None): The run that produced it, or None when the
+            run listing does not hold it.
     """
 
     artifact: dict[str, Any]
@@ -115,7 +140,7 @@ class ArtifactMatch:
         """Return the artifact's name.
 
         Returns:
-            The name as reported by the API, or an empty string.
+            str: The name as reported by the API, or an empty string.
         """
         return str(self.artifact.get("name") or "")
 
@@ -124,7 +149,7 @@ class ArtifactMatch:
         """Return the artifact's numeric id.
 
         Returns:
-            The id as reported by the API.
+            Any: The id as reported by the API.
         """
         return self.artifact.get("id")
 
@@ -134,13 +159,19 @@ class IngestSummary:
     """Counters describing one ingestion, printed at the end of a run.
 
     Attributes:
-        artifacts_seen: Artifacts matching a configured pattern.
-        artifacts_parsed: Artifacts successfully downloaded and read.
-        results_written: Result rows newly appended.
-        runs_written: Run rows newly appended.
-        results_skipped: Rows already present, and therefore not rewritten.
-        anomalies: Count of artifacts that yielded nothing, by reason.
-        by_repo: Result rows written, per repository.
+        artifacts_seen (int): Artifacts matching a configured pattern and
+            selected by their ``keep`` policy.
+        artifacts_already_read (int): Of those, artifacts the ledger already
+            held, which were not downloaded.
+        artifacts_parsed (int): Artifacts downloaded and read into results.
+        results_written (int): Result rows newly appended, or that would be in
+            a dry run.
+        runs_written (int): Run rows newly appended.
+        results_skipped (int): Rows already present, and therefore not
+            rewritten.
+        anomalies (Counter): Count of artifacts that yielded nothing, by
+            reason.
+        by_repo (Counter): Result rows written, per repository.
     """
 
     artifacts_seen: int = 0
@@ -156,8 +187,9 @@ class IngestSummary:
         """Format the counters as a short report.
 
         Returns:
-            A multi-line summary. Actionable anomalies are listed separately
-            from expiry, because one is a problem and the other is the weather.
+            str: A multi-line summary: the counters, results per repository,
+            and, when any artifact yielded nothing, a count per reason with the
+            actionable reasons flagged ``<-- investigate``.
         """
         lines = [
             "",
@@ -186,8 +218,16 @@ def ingest_repository(context: IngestContext, source: SourceSpec) -> None:
     """Ingest every matching artifact for one repository.
 
     Args:
-        context: Collaborators and run mode.
-        source: Repository and artifact patterns from the configuration.
+        context (IngestContext): Collaborators and run mode.
+        source (SourceSpec): Repository and artifact patterns from the
+            configuration.
+
+    Returns:
+        None: Rows are appended to ``context.store`` and counts to
+        ``context.summary``.
+
+    Raises:
+        GitHubError: If the run or artifact listing cannot be fetched.
     """
     LOGGER.info("Reading %s", source.repo)
     runs_by_id = {run["id"]: run for run in context.client.list_runs(source.repo)}
@@ -221,18 +261,18 @@ def ingest_repository(context: IngestContext, source: SourceSpec) -> None:
 def _select(matches: list[ArtifactMatch], today: str) -> list[ArtifactMatch]:
     """Apply each artifact spec's run-selection policy.
 
-    ``latest_per_day`` keeps the newest artifact per spec, parameter set and
-    UTC day, and only for days that are over. Choosing the latest of a day
-    that is still running would let an afternoon run add a second "latest" for
-    the same day on the next collection, so a day is collected once, after it
-    ends.
+    A match under ``every`` is always kept. Under ``latest_per_day`` only the
+    newest artifact per spec, parameter set and UTC creation day is kept, and
+    only for days before ``today``; an artifact with no creation date is
+    dropped. Design: ``DESIGN.md`` section 8.
 
     Args:
-        matches: Every artifact matching a configured pattern, in listing order.
-        today: Today's UTC date as ``YYYY-MM-DD``.
+        matches (list[ArtifactMatch]): Every artifact matching a configured
+            pattern, in listing order.
+        today (str): Today's UTC date as ``YYYY-MM-DD``.
 
     Returns:
-        The artifacts to read, in listing order.
+        list[ArtifactMatch]: The artifacts to read, in listing order.
     """
     latest: dict[tuple[Any, ...], ArtifactMatch] = {}
     chosen: set[int] = set()
@@ -257,13 +297,19 @@ def _read_artifact(
 ) -> AnomalyReport | None:
     """Download, extract and parse one artifact, persisting whatever it yields.
 
+    The checks run in order: expired, no linked run, download failure, no
+    member matching the glob, no parseable result. The first that applies is
+    the artifact's anomaly, and nothing is downloaded for the first two.
+
     Args:
-        context: Collaborators and run mode.
-        source: Repository being ingested.
-        match: The artifact, its spec, and the run that produced it.
+        context (IngestContext): Collaborators and run mode.
+        source (SourceSpec): Repository being ingested.
+        match (ArtifactMatch): The artifact, its spec, and the run that
+            produced it.
 
     Returns:
-        An AnomalyReport when the artifact yielded no results, otherwise None.
+        AnomalyReport | None: The anomaly when the artifact yielded no results;
+        None when its results were persisted.
     """
     if match.artifact.get("expired"):
         LOGGER.info("  expired: %s (%s)", match.name, match.artifact.get("created_at"))
@@ -315,24 +361,22 @@ def _read_artifact(
 def _shape(results: list[Any], source: SourceSpec, spec: ArtifactSpec) -> list[Any]:
     """Apply the source's and artifact's policies to freshly parsed results.
 
-    Two adjustments, both made here rather than in the parsers because both
-    depend on configuration the parsers never see, and the parsers should stay
-    format readers that know nothing about any one source:
-
-    - **An assigned ID recovered from the test name**, for a suite that writes
-      it there - ``MQC_CMN_UNI_112016_red_when_...`` - instead of publishing a
-      label or property. An ID a parser already found is never overwritten.
+    - **An assigned ID recovered from the test name**, where the source declares
+      ``test_id_from_name`` and the parser found no ID. An ID a parser already
+      found is never overwritten.
     - **Steps dropped from passing and skipped results**, where the artifact's
-      step policy is ``failures``. The result is marked ``steps_omitted`` so
-      the record still says the source recorded steps.
+      step policy is ``failures``. The result is marked ``steps_omitted``.
+
+    Design: ``DESIGN.md`` section 8.
 
     Args:
-        results: Parsed results from one artifact.
-        source: The repository they came from.
-        spec: The artifact pattern that matched.
+        results (list[Any]): Parsed results from one artifact.
+        source (SourceSpec): The repository they came from.
+        spec (ArtifactSpec): The artifact pattern that matched.
 
     Returns:
-        The adjusted results.
+        list[Any]: The results in the same order, each replaced by an adjusted
+        copy where a policy applied.
     """
     shaped: list[Any] = []
     for result in results:
@@ -350,11 +394,17 @@ def _persist(
 ) -> None:
     """Write one artifact's rows into the record.
 
+    Appends the run row, then the result rows, then the ledger row, all to the
+    month the run started in. In a dry run only the counters move.
+
     Args:
-        context: Collaborators and run mode.
-        source: Repository being ingested.
-        match: The artifact and the run that produced it.
-        results: Parsed results from the artifact.
+        context (IngestContext): Collaborators and run mode.
+        source (SourceSpec): Repository being ingested.
+        match (ArtifactMatch): The artifact and the run that produced it.
+        results (list[Any]): Parsed results from the artifact.
+
+    Returns:
+        None
     """
     run = match.run or {}
     run_id = int(run["id"])
@@ -376,6 +426,7 @@ def _persist(
     written = context.store.append_results(source.slug, month, rows)
     summary.results_written += written
     summary.by_repo[source.repo] += written
+    # Added 2026-11-10 with the artifacts ledger.
     # Ledgered only after its rows are on disk, so an interrupted collection
     # reads the artifact again rather than skipping rows it never wrote.
     context.store.append_artifacts(
@@ -399,15 +450,22 @@ def _record_anomaly(
 ) -> None:
     """Record an artifact that matched configuration but produced no results.
 
-    The glob and parser are recorded alongside the reason so that a later reader
-    can tell a misconfigured collector from a misreporting suite - the two
-    produce the same symptom and want opposite fixes.
+    The row carries the reason and its detail, the glob and parser applied, and
+    the run's id, conclusion and commit. It goes to the run's month, or the
+    artifact's creation month when no run is linked, and a linked run's row is
+    appended too. A dry run only counts the reason, and an anomaly never
+    reaches the ledger, so the artifact is read again next time.
 
     Args:
-        context: Collaborators and run mode.
-        source: Repository being ingested.
-        match: The artifact, its spec, and the run that produced it.
-        anomaly: The reason and its supporting diagnostic detail.
+        context (IngestContext): Collaborators and run mode.
+        source (SourceSpec): Repository being ingested.
+        match (ArtifactMatch): The artifact, its spec, and the run that
+            produced it.
+        anomaly (AnomalyReport): The reason and its supporting diagnostic
+            detail.
+
+    Returns:
+        None
     """
     context.summary.anomalies[anomaly.reason] += 1
     if context.dry_run:
@@ -438,11 +496,13 @@ def _run_record(source: SourceSpec, run: dict[str, Any]) -> RunRecord:
     """Build the run record for one Actions run.
 
     Args:
-        source: Repository being ingested.
-        run: The Actions run object.
+        source (SourceSpec): Repository being ingested.
+        run (dict[str, Any]): The Actions run object.
 
     Returns:
-        The normalized run record.
+        RunRecord: The normalized record. ``attempt`` defaults to 1,
+        ``started_at`` falls back to ``created_at``, and ``sut_version`` is
+        left None.
     """
     return RunRecord(
         repo=source.repo,
@@ -462,10 +522,11 @@ def _month_of(run: dict[str, Any]) -> str:
     """Return the partition month for a run.
 
     Args:
-        run: The Actions run object.
+        run (dict[str, Any]): The Actions run object.
 
     Returns:
-        ``YYYY-MM`` taken from the run's start time.
+        str: ``YYYY-MM`` taken from ``run_started_at``, or ``created_at`` when
+        that is absent.
     """
     return str(run.get("run_started_at") or run.get("created_at") or "")[:7]
 
@@ -476,11 +537,13 @@ def _match_artifact(
     """Find the artifact spec matching an artifact, with its parameter groups.
 
     Args:
-        source: Repository configuration.
-        artifact: Artifact object from the API.
+        source (SourceSpec): Repository configuration.
+        artifact (dict[str, Any]): Artifact object from the API.
 
     Returns:
-        A ``(spec, params)`` pair, or None when no configured pattern matches.
+        tuple[ArtifactSpec, dict[str, str]] | None: The first ``(spec, params)``
+        pair in configuration order, or None when no configured pattern
+        matches.
     """
     name = str(artifact.get("name") or "")
     for spec in source.artifacts:
@@ -493,16 +556,16 @@ def _match_artifact(
 def _extract(payload: bytes, glob: str) -> dict[str, bytes]:
     """Read the members of an artifact zip that a parser needs.
 
-    Only matching members are read into memory. The archives are large mostly
-    because of Allure's HTML assets, and none of that is worth decompressing.
+    Only files whose path matches the glob are decompressed; directories and
+    everything else are left in the archive.
 
     Args:
-        payload: Raw zip bytes.
-        glob: fnmatch pattern applied to member paths.
+        payload (bytes): Raw zip bytes.
+        glob (str): fnmatch pattern applied to member paths.
 
     Returns:
-        Member path to contents. An unreadable archive yields an empty mapping
-        rather than raising, so one bad artifact costs one artifact.
+        dict[str, bytes]: Member path to contents. An unreadable archive is
+        logged and yields an empty mapping rather than raising.
     """
     members: dict[str, bytes] = {}
     try:
@@ -517,18 +580,17 @@ def _extract(payload: bytes, glob: str) -> dict[str, bytes]:
 
 
 def _manifest(payload: bytes) -> list[str]:
-    """List every path inside an artifact zip.
+    """List every file path inside an artifact zip.
 
-    Used only when the configured glob matched nothing, to record what the
-    archive did contain. A glob that is wrong and an archive that is empty
-    produce the same symptom and want opposite fixes, and this is what tells
-    them apart after the fact.
+    Called only when the configured glob matched nothing, to record what the
+    archive did contain. Design: ``DESIGN.md`` section 9.
 
     Args:
-        payload: Raw zip bytes.
+        payload (bytes): Raw zip bytes.
 
     Returns:
-        Sorted member paths, empty when the archive cannot be read.
+        list[str]: Sorted member paths, directories excluded; empty when the
+        archive cannot be read.
     """
     try:
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
@@ -541,7 +603,8 @@ def build_parser() -> argparse.ArgumentParser:
     """Define the command-line interface.
 
     Returns:
-        The configured argument parser.
+        argparse.ArgumentParser: The parser for ``--repo``, ``--data-dir``,
+        ``--config``, ``--dry-run`` and ``--verbose``.
     """
     parser = argparse.ArgumentParser(
         prog="python -m collector.ingest",
@@ -574,10 +637,14 @@ def main(argv: list[str] | None = None) -> int:
     """Run an ingestion from the command line.
 
     Args:
-        argv: Argument vector, defaulting to ``sys.argv``.
+        argv (list[str] | None): Argument vector, defaulting to ``sys.argv``.
 
     Returns:
-        Process exit code: 0 on success, 1 when the API could not be reached.
+        int: Process exit code: 0 on success; 1 when no configured repository
+        matches ``--repo``, or the API could not be reached.
+
+    Raises:
+        ConfigError: If the source configuration is malformed.
     """
     args = build_parser().parse_args(argv)
     logging.basicConfig(

@@ -1,16 +1,25 @@
 """Render the Markdown report as a self-contained HTML page.
 
-The page is **generated from the record on every run**, never hand-written, and
-that is the whole point rather than a convenience. A hand-maintained statistics
-page states figures nobody re-checks, so it rots silently the first time the
-data moves - which is precisely the defect this project exists to notice. A
-generated page cannot disagree with its source, because it has no independent
-copy of it.
+Created: 2026-08-16
+Last updated: 2026-11-10
 
-The converter handles only the subset of Markdown the reports emit: headings,
-pipe tables, paragraphs, and inline bold and code. Reaching for a Markdown
-library would add a dependency to a nightly job in order to support syntax
-nothing here produces.
+This file contains ``render_page``, which wraps the report in a complete HTML
+document with a timestamped footer; ``markdown_to_html``, which converts the
+report body; the private helpers for inline spans and pipe tables; and
+``STYLES``, the page's inline stylesheet with light and dark palettes.
+
+It is the last step of ``make site``: :mod:`collector.reports` builds the
+Markdown from the index and hands it here, and the returned page is written to
+``docs/index.html``, which GitHub Pages publishes. Nothing here reads the record
+or the index, so the page can only show what the report already says.
+
+**A fixed Markdown subset.** Lines starting ``# `` and ``## `` become headings,
+lines starting ``|`` are collected into a table, a separator row marks a column
+right-aligned when its cell ends in ``:``, and every other non-blank line is a
+paragraph. Inline, only ``**bold**`` and backtick code are converted, and all
+text is HTML-escaped first.
+
+Specified by ``DESIGN.md`` section 10.3.
 """
 
 from __future__ import annotations
@@ -20,7 +29,7 @@ import re
 from datetime import datetime, timezone
 from typing import Final
 
-#: Inline styles. The page is served from a different origin than the portfolio
+#: INLINE STYLES. The page is served from a different origin than the portfolio
 #: site, so it carries its own presentation rather than importing a stylesheet
 #: it cannot reach.
 STYLES: Final[str] = """
@@ -67,10 +76,10 @@ def _inline(text: str) -> str:
     """Convert inline Markdown to HTML, escaping everything else.
 
     Args:
-        text: One line of Markdown, without block syntax.
+        text (str): One line of Markdown, without block syntax.
 
     Returns:
-        HTML-safe markup with bold and code spans applied.
+        str: HTML-escaped text with code spans, then bold spans, applied.
     """
     escaped = html.escape(text)
     escaped = _CODE.sub(r"<code>\1</code>", escaped)
@@ -81,11 +90,11 @@ def _split_row(line: str) -> list[str]:
     """Split one pipe-table row into its cells.
 
     Args:
-        line: A Markdown table row.
+        line (str): A Markdown table row.
 
     Returns:
-        Cell contents, with the empty edges produced by leading and trailing
-        pipes discarded.
+        list[str]: Stripped cell contents, with the empty edges produced by
+        leading and trailing pipes discarded.
     """
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
 
@@ -94,13 +103,13 @@ def _render_table(rows: list[str], numeric: list[bool]) -> list[str]:
     """Render a collected pipe table as HTML.
 
     Args:
-        rows: Table lines, header first, separator already removed.
-        numeric: One flag per column, True where the separator marked it
-            right-aligned.
+        rows (list[str]): Table lines, header first, separator already removed.
+        numeric (list[bool]): One flag per column, True where the separator
+            marked it right-aligned; columns beyond the list are left-aligned.
 
     Returns:
-        HTML lines, wrapped so a wide table scrolls inside itself rather than
-        forcing the page to scroll sideways.
+        list[str]: HTML lines, the table wrapped in a ``table-wrap`` div that
+        scrolls horizontally on its own instead of the page.
     """
     out = ['<div class="table-wrap">', "<table>"]
     header, *body = rows
@@ -123,17 +132,17 @@ def markdown_to_html(markdown: str) -> str:
     """Convert the report's Markdown subset to HTML.
 
     Args:
-        markdown: The rendered report.
+        markdown (str): The rendered report.
 
     Returns:
-        HTML for the page body.
+        str: HTML for the page body, one element per line.
     """
     out: list[str] = []
     table: list[str] = []
     numeric: list[bool] = []
 
     def flush() -> None:
-        """Emit any table collected so far."""
+        """Emit any table collected so far and clear it."""
         if table:
             out.extend(_render_table(table, numeric))
             table.clear()
@@ -163,12 +172,13 @@ def render_page(markdown: str, source_url: str) -> str:
     """Wrap the converted report in a complete HTML document.
 
     Args:
-        markdown: The rendered report.
-        source_url: Repository this page was generated from, linked in the
-            footer so a reader can check the figures against the record.
+        markdown (str): The rendered report.
+        source_url (str): Repository this page was generated from, linked in
+            the footer so a reader can check the figures against the record.
 
     Returns:
-        A self-contained HTML document.
+        str: A self-contained HTML document whose footer carries the UTC
+        generation time.
     """
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     body = markdown_to_html(markdown)

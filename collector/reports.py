@@ -1,20 +1,37 @@
 """Descriptive reports over the derived index.
 
-Every figure here is a count or an order statistic. Nothing is modelled, and
-nothing is extrapolated, because the corpus does not support it: thirty-odd
-test-level failures across a portfolio is a list, not a distribution, and
-presenting it as a rate would imply precision the data does not have. Where a
-number is too small to carry an inference, the report says so in the output
-rather than leaving the reader to work it out.
+Created: 2026-08-16
+Last updated: 2026-11-10
 
-Two ideas are kept deliberately apart:
+This file contains the command line ``python -m collector.reports`` (``main``);
+``build_report``, which assembles the full Markdown report; one function per
+report section (``repositories``, ``inventory``, ``same_input_disagreement``,
+``failure_inventory``, ``volatility``, ``duration_drift``, ``error_budget``,
+``coverage_gaps``, ``anomalies``); and the helpers that name a test and a
+repository in a table (``test_labels``, ``repo_codes``).
 
-* **Same-input disagreement** - identical commit, identical code, different
-  outcome. This is the only thing that proves flakiness, and today it exists
-  only in PublicAP's build matrix.
-* **Volatility** - how often a test's outcome changes over time. Useful, but it
-  cannot distinguish a flaky test from a test that broke and was fixed, so it
-  is labelled as a signal rather than a verdict.
+It runs last (``make report``, ``make site``): it reads only
+``build/results.sqlite``, which ``make db`` built from ``data/``, plus
+``config/sources.yaml`` for repository codes and the error-budget policy. The
+Markdown it returns is written to ``--out`` or handed to
+:func:`collector.render.render_page` for ``--html``; nothing here writes to the
+record or gates any build.
+
+**Counts and order statistics only.** Every figure is a count, a median or a
+nearest-rank percentile; nothing is modelled or extrapolated, and where a
+section has nothing to show it prints a sentence saying so and why.
+
+**Same-input disagreement and volatility are separate sections.** The first
+groups observed rows by run, test and test case, varying only the environment
+parameters in ``ENVIRONMENT_PARAMS``, and lists any group with more than one
+status. The second counts outcome changes between consecutive runs and is
+labelled a signal, not a verdict.
+
+**Every per-test table prints the repository code, the assigned ID and the test
+name.** The code comes from :func:`repo_codes`, the ID and name from
+:func:`test_labels`, and a test without an ID prints ``NO_ID``.
+
+Specified by ``DESIGN.md`` section 10.
 """
 
 from __future__ import annotations
@@ -34,7 +51,7 @@ from collector.render import render_page
 
 LOGGER = logging.getLogger(__name__)
 
-#: Minimum observations before a duration summary is worth printing.
+#: Minimum passing observations before a test's duration summary is printed.
 MIN_DURATION_SAMPLES: Final[int] = 8
 
 #: How many rows each ranked section prints.
@@ -46,12 +63,10 @@ BAD_STATUSES: Final[tuple[str, ...]] = ("failed", "broken")
 #: Linked in the generated page so a reader can check figures against the record.
 SOURCE_URL: Final[str] = "https://github.com/apolskiy/PortfolioTestInsights"
 
-#: Parameters describing *where* a test ran rather than *what it ran against*.
-#: These come from the artifact name - a build matrix leg or a browser engine -
-#: and are the axes a same-input comparison varies deliberately. Every other
-#: parameter is part of the test case and must be held fixed, or a parametrized
-#: test that passes for Brazil and fails for Germany looks like disagreement
-#: when it is simply two different inputs.
+#: ENVIRONMENT PARAMETERS, per ``DESIGN.md`` section 10: those describing
+#: *where* a test ran rather than *what it ran against*. They come from the
+#: artifact name, a build matrix leg or a browser engine, and are the only axes
+#: a same-input comparison lets vary; every other parameter is held fixed.
 ENVIRONMENT_PARAMS: Final[frozenset[str]] = frozenset({"os", "python", "browser"})
 
 
@@ -59,11 +74,13 @@ def _case_key(params_json: str) -> str:
     """Reduce a parameter set to the part that identifies the test case.
 
     Args:
-        params_json: The row's serialized parameters.
+        params_json (str): The row's serialized parameters.
 
     Returns:
-        A stable string over the non-environment parameters, so two rows share
-        it exactly when they exercised the same case.
+        str: Key-sorted JSON over the parameters not in
+        ``ENVIRONMENT_PARAMS``, so two rows share it exactly when they
+        exercised the same case. Text that is not valid JSON is returned as
+        it is.
     """
     try:
         params = json.loads(params_json or "{}")
@@ -74,17 +91,17 @@ def _case_key(params_json: str) -> str:
 
 
 def _percentile(values: list[float], fraction: float) -> float:
-    """Return a percentile by nearest-rank, without interpolating.
+    """Return a percentile by nearest rank, without interpolating.
 
-    Interpolation invents a value that was never measured. For durations drawn
-    from a few dozen runs, reporting a real observation is more honest.
+    Design: ``DESIGN.md`` section 10.
 
     Args:
-        values: Samples, not required to be sorted.
-        fraction: Percentile as a fraction, for example 0.95.
+        values (list[float]): Samples, not required to be sorted; at least one.
+        fraction (float): Percentile as a fraction, for example 0.95.
 
     Returns:
-        The sample at the nearest rank.
+        float: The sample at rank ``round(fraction * n)``, clamped to the first
+        and last sample, so the result is always a measured value.
     """
     ordered = sorted(values)
     rank = max(0, min(len(ordered) - 1, round(fraction * len(ordered)) - 1))
@@ -97,17 +114,18 @@ NO_ID: Final[str] = "-"
 
 
 def repo_codes() -> dict[str, str]:
-    """Map each repository to the short code its assigned test IDs already use.
+    """Map each repository to the short code the tables print for it.
 
-    Spelling `VM-Deployment-and-Configuration` in every row of every table costs
-    a third of the width and tells the reader nothing they do not learn once.
-    The suites already carry a short code per repository - the prefix of their
-    assigned IDs - so reusing it keeps the tables narrow and makes the column
-    agree with the IDs beside it instead of being a second naming scheme.
+    Design: ``DESIGN.md`` section 10.2.
 
     Returns:
-        Owner-qualified repository name to short code. Repositories missing from
-        the configuration fall back to their bare name.
+        dict[str, str]: Owner-qualified repository name to
+        :attr:`SourceSpec.display_code`, for every configured source.
+        Repositories missing from the configuration are absent, and
+        :func:`_code` falls back to their bare name.
+
+    Raises:
+        ConfigError: If the source configuration is malformed.
     """
     return {source.repo: source.display_code for source in load_sources()}
 
@@ -116,11 +134,12 @@ def _code(repo: str, codes: dict[str, str]) -> str:
     """Render one repository cell.
 
     Args:
-        repo: Owner-qualified repository name.
-        codes: Lookup from :func:`repo_codes`.
+        repo (str): Owner-qualified repository name.
+        codes (dict[str, str]): Lookup from :func:`repo_codes`.
 
     Returns:
-        The short code, or the bare repository name when none is configured.
+        str: The short code, or the bare repository name when none is
+        configured.
     """
     return codes.get(repo, repo.split("/")[-1])
 
@@ -129,11 +148,10 @@ def _short(identity: str) -> str:
     """Trim a repo-qualified identity down to something a table can hold.
 
     Args:
-        identity: Either an assigned ID or a ``repo::module::name`` uid.
+        identity (str): Either an assigned ID or a ``repo::module::name`` uid.
 
     Returns:
-        A display form: assigned IDs pass through, uids lose their repo and
-        module.
+        str: Assigned IDs unchanged; for a uid, the part after its last ``::``.
     """
     if "::" not in identity:
         return identity
@@ -143,21 +161,15 @@ def _short(identity: str) -> str:
 def test_labels(connection: sqlite3.Connection) -> dict[tuple[str, str], tuple[str, str]]:
     """Map each identity to the ID and the test name a reader needs to see.
 
-    An assigned ID is the right key and the wrong label. ``PAWA_10020`` is
-    stable across renames, which is exactly why it carries no meaning - so a
-    report that printed only the ID would send every reader to the source to
-    find out which test it is. Under a test-management system the ID would
-    resolve to a title; there is no such system here, and the report should not
-    assume one.
-
-    Both are therefore published side by side: the ID to cite and track, the
-    name to read.
+    Design: ``DESIGN.md`` section 10.2.
 
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        ``(repo, identity)`` to ``(test id or '-', test name)``.
+        dict[tuple[str, str], tuple[str, str]]: ``(repo, identity)`` to
+        ``(test id or NO_ID, test name)``. The test name falls back to the
+        trimmed identity when no row carries one.
     """
     labels: dict[tuple[str, str], tuple[str, str]] = {}
     query = """
@@ -173,12 +185,13 @@ def _cells(repo: str, identity: str, labels: dict[tuple[str, str], tuple[str, st
     """Render the two identity columns for one row.
 
     Args:
-        repo: Owning repository.
-        identity: The row's grouping identity.
-        labels: Lookup from :func:`test_labels`.
+        repo (str): Owning repository.
+        identity (str): The row's grouping identity.
+        labels (dict[tuple[str, str], tuple[str, str]]): Lookup from
+            :func:`test_labels`.
 
     Returns:
-        Two pipe-separated table cells: assigned ID, then test name.
+        str: Two pipe-separated table cells: assigned ID, then test name.
     """
     test_id, test_name = labels.get((repo, identity), (NO_ID, _short(identity)))
     return f"{test_id} | {test_name}"
@@ -187,19 +200,16 @@ def _cells(repo: str, identity: str, labels: dict[tuple[str, str], tuple[str, st
 def repositories(connection: sqlite3.Connection) -> list[str]:
     """Publish the code-to-repository mapping as a legend, once.
 
-    Every table below cites a repository by its short code, so the expansion
-    belongs somewhere a reader meets before the first of them - and somewhere
-    that is a lookup rather than a measurement. Folding it into the inventory
-    table would widen a statistics table to carry a two-column fact, and bury
-    the one row a reader is scanning for behind four numeric columns.
+    One row per repository the index holds, with its code, a link, its test
+    count, and the range of assigned IDs in use plus how many tests carry none.
+    A configured source never collected is not listed. Design: ``DESIGN.md``
+    section 10.2.
 
     Args:
-        connection: Open index connection, used only to list the repositories
-            the record actually holds - a configured source that has never been
-            collected does not belong in a legend for this report.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines.
     """
     codes = repo_codes()
     lines = ["## Repositories", ""]
@@ -213,9 +223,10 @@ def repositories(connection: sqlite3.Connection) -> list[str]:
     lines.append("")
     lines.append("| Code | Repository | Tests | Assigned IDs in use |")
     lines.append("|---|---|---:|---|")
-    # Collapse to one row per test first. A test's assigned ID lives on the rows
-    # recorded since the scheme existed; its older rows still carry NULL, so
-    # counting NULLs directly would report every test as unassigned.
+    # Added 2026-08-17. Collapse to one row per test first: a test's assigned
+    # ID lives on its rows recorded since the scheme existed while its older
+    # rows still carry NULL, so counting NULLs directly would report every test
+    # as unassigned.
     query = """
         SELECT repo, COUNT(*), MIN(assigned), MAX(assigned), SUM(assigned IS NULL)
         FROM (
@@ -240,10 +251,12 @@ def inventory(connection: sqlite3.Connection) -> list[str]:
     """Summarize what the record holds, per repository.
 
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines: one table row per repository with its runs,
+        distinct tests, observed (non-derived) rows, failed or broken rows,
+        and rows carrying a trace.
     """
     lines = ["## Inventory", ""]
     codes = repo_codes()
@@ -269,16 +282,16 @@ def inventory(connection: sqlite3.Connection) -> list[str]:
 def same_input_disagreement(connection: sqlite3.Connection) -> list[str]:
     """Find tests that disagreed with themselves on identical input.
 
-    A build matrix runs the same commit several ways in one workflow run, so a
-    test that passes on one leg and fails on another has genuinely disagreed
-    with itself under identical code. That is the only evidence of flakiness the
-    portfolio currently produces, because no suite reruns a failure.
+    Observed rows are grouped by repository, run, identity and test case
+    (:func:`_case_key`); a group holding more than one status is a
+    disagreement. When none exists the section says so and states how narrow
+    that evidence is. Design: ``DESIGN.md`` section 10.
 
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines.
     """
     lines = ["## Same-input disagreement", ""]
     query = """
@@ -325,11 +338,15 @@ def same_input_disagreement(connection: sqlite3.Connection) -> list[str]:
 def volatility(connection: sqlite3.Connection) -> list[str]:
     """Rank tests by how often their outcome changed between consecutive runs.
 
+    Observed rows are ordered by run start time per test; a flip is a status
+    different from the one before it. The ``TOP_N`` tests with the most flips
+    are listed, ties broken by observation count.
+
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines.
     """
     lines = ["## Outcome volatility", ""]
     query = """
@@ -377,30 +394,20 @@ def volatility(connection: sqlite3.Connection) -> list[str]:
 def error_budget(connection: sqlite3.Connection) -> list[str]:
     """Report how much of each test's duration error budget has been spent.
 
-    A single slow run failing a build is noise; sustained degradation is signal.
-    An error budget expresses that difference - it tolerates the occasional blip
-    and reports only when breaches become routine.
-
-    The objective here is **relative**: a run breaches when it exceeds a
-    multiple of that test's own established median. That choice is forced by the
-    data. No suite in this portfolio declares a per-test duration SLA, so an
-    absolute threshold would have to be seeded from this very history and then
-    measured against it, which proves nothing. A relative objective instead
-    answers the question actually worth asking - is this test getting slower
-    than it used to be.
-
-    Two things this deliberately does not do. It does not restate
-    CountryWeather's per-request API thresholds: those govern one HTTP call and
-    this record holds whole-test durations, so the same number would be
-    measuring a different thing under the same name. And it does not gate
-    anything - see DESIGN.md section 1. It publishes budget consumption; a suite
-    that owns an SLO is the thing entitled to fail a build over it.
+    The section states the policy loaded from ``config/sources.yaml``, then
+    lists the ``TOP_N`` tests that breached at least once, worst first, each
+    marked ``spent`` when its breach fraction exceeds the budget. With no test
+    judgeable, or none breaching, it says which. It reports and never gates.
+    Design: ``DESIGN.md`` section 10.1.
 
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines.
+
+    Raises:
+        ConfigError: If the source configuration is malformed.
     """
     policy = load_slo()
     codes = repo_codes()
@@ -421,9 +428,8 @@ def error_budget(connection: sqlite3.Connection) -> list[str]:
         lines.append("No test has enough observations in the window to support a verdict.")
         return lines + [""]
 
-    # Only tests that actually breached are listed. A table of identical zeroes
-    # is not a finding, and ranking ties arbitrarily would invite a reader to
-    # read an order into rows that have none.
+    # Added 2026-08-17. Only tests that actually breached are listed; a table of
+    # identical zeroes is not a finding (DESIGN.md section 10.1).
     breaching = [row for row in rows if row[1]]
     spent = [row for row in rows if row[0] > policy.budget]
 
@@ -456,13 +462,20 @@ def _budget_rows(
 ) -> list[tuple[float, int, int, str, str]]:
     """Compute budget consumption per test over the trailing window.
 
+    Only observed, passing rows with a duration count. The window is the last
+    ``window_runs`` of them by run start time; the baseline is the median over
+    all of them; a run breaches when it exceeds ``tolerance`` times the
+    baseline. A test is skipped when its window holds fewer than
+    ``min_observations`` runs or its baseline is under ``floor_ms``.
+
     Args:
-        connection: Open index connection.
-        policy: The error-budget policy.
+        connection (sqlite3.Connection): Open index connection.
+        policy (SloPolicy): The error-budget policy.
 
     Returns:
-        ``(consumed, breaches, observations, repo, identity)`` sorted worst
-        first, covering only tests with enough observations to judge.
+        list[tuple[float, int, int, str, str]]: ``(consumed, breaches,
+        observations, repo, identity)`` sorted worst first, where ``consumed``
+        is breaches over window size.
     """
     query = """
         SELECT r.repo, r.identity, ru.started_at, r.duration_ms
@@ -493,11 +506,15 @@ def _budget_rows(
 def duration_drift(connection: sqlite3.Connection) -> list[str]:
     """Report the slowest tests and how far their tail sits above their median.
 
+    Only observed, passing rows with a duration count, and only tests with at
+    least ``MIN_DURATION_SAMPLES`` of them. The ``TOP_N`` tests are ranked by
+    p95 over median, a zero median ranking as 0.
+
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines.
     """
     lines = ["## Duration", ""]
     query = """
@@ -542,13 +559,15 @@ def duration_drift(connection: sqlite3.Connection) -> list[str]:
 
 
 def failure_inventory(connection: sqlite3.Connection) -> list[str]:
-    """List every recorded failure, since there are few enough to list.
+    """List every recorded failure in full, grouped by test and status.
 
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines: the total of failed and broken rows, then one
+        table row per test and status, most frequent first, with how many of
+        them carry a trace.
     """
     lines = ["## Failures", ""]
     placeholders = ", ".join("?" for _ in BAD_STATUSES)
@@ -584,11 +603,15 @@ def failure_inventory(connection: sqlite3.Connection) -> list[str]:
 def coverage_gaps(connection: sqlite3.Connection) -> list[str]:
     """Report what the record cannot answer, and why.
 
+    Per repository: observed rows, rows with steps, rows with an assigned ID,
+    and the source formats seen; then the reasons for each gap and the count
+    of synthesized ``not_run`` rows.
+
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines.
     """
     lines = ["## What this record cannot tell you", ""]
     lines.append("| Repo | Observations | With steps | With assigned ID | Formats |")
@@ -641,10 +664,12 @@ def anomalies(connection: sqlite3.Connection) -> list[str]:
     """Report artifacts that existed but yielded no results.
 
     Args:
-        connection: Open index connection.
+        connection (sqlite3.Connection): Open index connection.
 
     Returns:
-        Report lines.
+        list[str]: Report lines: one table row per anomaly, oldest first, with
+        its run, artifact, reason, creation date and run outcome, or a single
+        line when none is recorded.
     """
     lines = ["## Artifacts that yielded nothing", ""]
     rows = list(
@@ -679,10 +704,15 @@ def build_report(index_path: Path) -> str:
     """Render the full report.
 
     Args:
-        index_path: Location of the derived index.
+        index_path (Path): Location of the derived index.
 
     Returns:
-        The report as Markdown.
+        str: The report as Markdown: a title, then the repositories legend,
+        inventory, same-input disagreement, failures, volatility, duration,
+        error budget, coverage gaps and anomalies sections, in that order.
+
+    Raises:
+        ConfigError: If the source configuration is malformed.
     """
     connection = sqlite3.connect(index_path)
     try:
@@ -706,11 +736,15 @@ def build_report(index_path: Path) -> str:
 def main(argv: list[str] | None = None) -> int:
     """Render the report from the command line.
 
+    Writes Markdown to ``--out``, an HTML page to ``--html``, or, with
+    neither, prints the Markdown.
+
     Args:
-        argv: Argument vector, defaulting to ``sys.argv``.
+        argv (list[str] | None): Argument vector, defaulting to ``sys.argv``.
 
     Returns:
-        Process exit code.
+        int: Process exit code: 0 once the report is rendered, 1 when the index
+        does not exist.
     """
     parser = argparse.ArgumentParser(
         prog="python -m collector.reports",

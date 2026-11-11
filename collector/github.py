@@ -1,13 +1,31 @@
 """Read-only client for the GitHub Actions REST API.
 
-Scope is deliberately narrow: list runs, list artifacts, download an artifact
-zip. The collector never writes to a source repository, so no method here issues
-anything but a GET.
+Created: 2026-08-16
+Last updated: 2026-11-10
 
-Artifact listings carry a ``workflow_run`` block, which means one paginated
-listing per repository is enough to associate every artifact with its run. That
-is worth stating because the obvious implementation - fetch the run for each
-artifact - would turn a few hundred requests into a few thousand for no gain.
+This file contains :class:`GitHubClient`, whose three public methods list a
+repository's workflow runs, list its artifacts, and download one artifact zip;
+``resolve_token``, which finds the API token; and :class:`GitHubError`, which
+both raise when the API cannot be reached or refuses a request.
+
+Ingestion builds one client per collection and calls it before anything else:
+one run listing and one artifact listing per repository, then one download per
+artifact it decides to read. A :class:`GitHubError` from a listing ends the
+collection with exit code 1; one from a download is recorded as a
+``download_failed`` anomaly for that artifact and the collection goes on.
+
+**Only GET is ever issued.** The collector never writes to a source repository.
+
+**Retries are bounded.** A request is tried up to ``MAX_ATTEMPTS`` times. A
+transport error or a status in ``RETRYABLE_STATUSES`` waits and retries,
+honouring a numeric ``Retry-After`` header and otherwise backing off
+exponentially; any other non-success status raises at once.
+
+**The token is never logged or written.** ``resolve_token`` reads the first set
+variable of ``TOKEN_VARIABLES``, then falls back to ``gh auth token``; log
+lines name where the token came from, never its value.
+
+Specified by ``DESIGN.md`` section 9.
 """
 
 from __future__ import annotations
@@ -32,35 +50,39 @@ TOKEN_VARIABLES: Final[tuple[str, ...]] = ("PORTFOLIO_READ_TOKEN", "GH_TOKEN", "
 #: Page size. 100 is the maximum the API accepts and minimizes round trips.
 PAGE_SIZE: Final[int] = 100
 
-#: Statuses worth retrying. 403 appears here because GitHub returns it for
-#: secondary rate limiting, not only for genuine authorization failures.
+#: RETRYABLE STATUSES. 403 is included because GitHub returns it for secondary
+#: rate limiting, not only for genuine authorization failures.
 RETRYABLE_STATUSES: Final[frozenset[int]] = frozenset({403, 429, 500, 502, 503, 504})
 
-#: Attempts per request, and the base for exponential backoff in seconds.
+#: BOUNDED RETRIES: attempts per request, and the base for exponential backoff
+#: in seconds (``DESIGN.md`` section 9, rate limits).
 MAX_ATTEMPTS: Final[int] = 4
 BACKOFF_BASE_SECONDS: Final[float] = 2.0
 
-#: Requests time out rather than hanging a scheduled job indefinitely.
+#: BOUNDED, so a request times out rather than hanging a scheduled job.
 TIMEOUT_SECONDS: Final[int] = 60
 
 
 class GitHubError(RuntimeError):
-    """Raised when the API cannot be reached or refuses a request."""
+    """Raised when the API cannot be reached or refuses a request.
+
+    The message never carries the token.
+    """
 
 
 def resolve_token() -> str:
     """Find a token without ever putting one in a log line or a file.
 
-    Checks the environment first, then falls back to the locally authenticated
-    ``gh`` CLI so that a developer who has already signed in needs no extra
-    setup. CI supplies ``PORTFOLIO_READ_TOKEN`` and never reaches the fallback.
+    Checks ``TOKEN_VARIABLES`` in order, then falls back to the locally
+    authenticated ``gh`` CLI with a 30-second timeout.
 
     Returns:
-        The token string.
+        str: The token, stripped of surrounding whitespace.
 
     Raises:
-        GitHubError: If no token can be found. The message names the variables
-            that were checked and never echoes any value.
+        GitHubError: If no variable is set and ``gh`` is absent or fails, or if
+            ``gh`` returns an empty token. The message names the variables that
+            were checked and never echoes a value.
     """
     for variable in TOKEN_VARIABLES:
         value = os.environ.get(variable)
@@ -96,8 +118,16 @@ class GitHubClient:
         """Prepare a session with authentication and API versioning headers.
 
         Args:
-            token: Token to use. Resolved from the environment when omitted.
-            session: Pre-built session, for tests that stub transport.
+            token (str | None): Token to use. Resolved by :func:`resolve_token`
+                when omitted.
+            session (requests.Session | None): Pre-built session, for tests that
+                stub transport.
+
+        Returns:
+            None
+
+        Raises:
+            GitHubError: If no token is given and none can be resolved.
         """
         self._session = session or requests.Session()
         self._session.headers.update(
@@ -113,10 +143,14 @@ class GitHubClient:
         """List every workflow run for a repository.
 
         Args:
-            repo: Owner-qualified repository name.
+            repo (str): Owner-qualified repository name.
 
         Returns:
-            Run objects, newest first as the API returns them.
+            list[dict[str, Any]]: Run objects, newest first as the API returns
+            them.
+
+        Raises:
+            GitHubError: If a page cannot be fetched.
         """
         return list(self._paginate(f"/repos/{repo}/actions/runs", "workflow_runs"))
 
@@ -124,38 +158,51 @@ class GitHubClient:
         """List every artifact for a repository.
 
         Args:
-            repo: Owner-qualified repository name.
+            repo (str): Owner-qualified repository name.
 
         Returns:
-            Artifact objects, each carrying the ``workflow_run`` block that
-            associates it with the run that produced it.
+            list[dict[str, Any]]: Artifact objects, each carrying the
+            ``workflow_run`` block that associates it with the run that produced
+            it.
+
+        Raises:
+            GitHubError: If a page cannot be fetched.
         """
         return list(self._paginate(f"/repos/{repo}/actions/artifacts", "artifacts"))
 
     def download_artifact(self, repo: str, artifact_id: int) -> bytes:
         """Download one artifact archive.
 
+        Authentication is required even for public repositories.
+
         Args:
-            repo: Owner-qualified repository name.
-            artifact_id: Artifact to fetch.
+            repo (str): Owner-qualified repository name.
+            artifact_id (int): Artifact to fetch.
 
         Returns:
-            The raw zip bytes. Authentication is required even for public
-            repositories, which is the only reason this project needs a token.
+            bytes: The raw zip.
+
+        Raises:
+            GitHubError: If the download fails.
         """
         response = self._request(f"/repos/{repo}/actions/artifacts/{artifact_id}/zip")
         return response.content
 
     def _paginate(self, path: str, key: str) -> Iterator[dict[str, Any]]:
-        """Walk every page of a list endpoint.
+        """Walk every page of a list endpoint, ``PAGE_SIZE`` items at a time.
+
+        Stops at an empty page or a short one, and requests nothing further
+        once the caller stops iterating.
 
         Args:
-            path: API path below the root.
-            key: Name of the array within each response body.
+            path (str): API path below the root.
+            key (str): Name of the array within each response body.
 
-        Yields:
-            One object at a time, so a caller that stops early costs no further
-            requests.
+        Returns:
+            Iterator[dict[str, Any]]: A generator yielding one object at a time.
+
+        Raises:
+            GitHubError: If a page cannot be fetched.
         """
         page = 1
         while True:
@@ -172,15 +219,15 @@ class GitHubClient:
         """Issue a GET with bounded retries and rate-limit awareness.
 
         Args:
-            path: API path below the root.
-            params: Query parameters.
+            path (str): API path below the root.
+            params (dict[str, Any] | None): Query parameters.
 
         Returns:
-            The successful response.
+            requests.Response: The first successful response.
 
         Raises:
-            GitHubError: If every attempt fails, or the API returns a status
-                that retrying cannot fix.
+            GitHubError: If a status outside ``RETRYABLE_STATUSES`` comes back,
+                or all ``MAX_ATTEMPTS`` attempts fail.
         """
         url = f"{API_ROOT}{path}"
         last_error = ""
@@ -210,8 +257,13 @@ class GitHubClient:
         """Wait before a retry, honouring the server's own guidance when given.
 
         Args:
-            attempt: 1-based attempt number just completed.
-            response: The failed response, when there was one.
+            attempt (int): 1-based attempt number just completed.
+            response (requests.Response | None): The failed response, when
+                there was one.
+
+        Returns:
+            None: Sleeps for a numeric ``Retry-After`` when the response carries
+            one, otherwise ``BACKOFF_BASE_SECONDS ** attempt`` seconds.
         """
         if response is not None:
             retry_after = response.headers.get("Retry-After")

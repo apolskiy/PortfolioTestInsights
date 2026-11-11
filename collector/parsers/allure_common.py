@@ -1,10 +1,31 @@
 """Helpers shared by the two Allure parsers.
 
-Allure's raw results and its generated report describe the same run with two
-different schemas - timing, step location and the meaning of ``name`` all
-differ. What they agree on is the shape of labels, parameters and steps, so
-those readers live here and the format-specific modules handle only what is
-genuinely format-specific.
+Created: 2026-08-16
+Last updated: 2026-11-10
+
+This file contains ``parse_documents``, the reading loop both Allure parsers
+call; ``build_result``, which assembles a :class:`ParsedResult` from one
+document; the readers for what the two schemas share (``read_labels``,
+``read_test_id``, ``read_parameters``, ``flatten_steps``,
+``step_duration_ms``); and the ``FormatFields`` and ``FormatReader`` types that
+define what each format-specific module must supply.
+
+``allure_raw`` and ``allure_report`` each pass their members and a
+``FormatReader`` in, and the results go back to ingestion through
+:data:`collector.parsers.PARSERS`. A document dropped here never becomes a row;
+an artifact whose every document is dropped becomes a ``no_results_parsed``
+anomaly.
+
+**Identity comes from ``fullName``.** A document without one is skipped. The
+module and test name are split at ``#``, the parameter id is stripped from the
+test name, or failing that from ``name``, and ``name`` itself is kept only as
+the display name.
+
+**The format reader supplies the rest.** Duration, failure message, trace and
+the raw step array are the only fields the two schemas disagree about, and each
+parser resolves them before ``build_result`` runs.
+
+Specified by ``DESIGN.md`` sections 4.1, 4.2, 6 and 7.
 """
 
 from __future__ import annotations
@@ -22,8 +43,8 @@ from collector.models import (
     strip_parameters,
 )
 
-#: Label under which a suite publishes its assigned test ID. See DESIGN.md
-#: section 7; absent from every artifact produced before the scheme existed.
+#: Label under which a suite publishes its assigned test ID (``DESIGN.md``
+#: section 7); absent from every artifact produced before the scheme existed.
 TEST_ID_LABEL: Final[str] = "test_id"
 
 #: Allure's own identifier label, accepted as an alternative spelling.
@@ -34,12 +55,13 @@ def read_labels(payload: dict[str, Any]) -> dict[str, str]:
     """Collect an Allure ``labels`` array into a mapping.
 
     Args:
-        payload: A raw result or report test-case object.
+        payload (dict[str, Any]): A raw result or report test-case object.
 
     Returns:
-        Label name to value. Where a label repeats - Allure permits several
-        ``tag`` entries - the last one wins, which is enough for the grouping
-        dimensions reports use (epic, feature, story, severity).
+        dict[str, str]: Label name to value, skipping entries without a name or
+        value. Where a label repeats, as Allure permits for ``tag``, the last
+        one wins, which is enough for the grouping dimensions reports use
+        (epic, feature, story, severity).
     """
     labels: dict[str, str] = {}
     for label in payload.get("labels") or []:
@@ -53,14 +75,15 @@ def read_labels(payload: dict[str, Any]) -> dict[str, str]:
 def read_test_id(labels: dict[str, str]) -> str | None:
     """Extract an assigned test ID from a label mapping.
 
+    ``test_id`` is checked first, then ``AS_ID``. Design: ``DESIGN.md``
+    section 7.
+
     Args:
-        labels: Labels as returned by :func:`read_labels`.
+        labels (dict[str, str]): Labels as returned by :func:`read_labels`.
 
     Returns:
-        The ID when one is present and well-formed, otherwise None. A label that
-        is present but malformed returns None rather than being stored, so a
-        typo shows up as a missing ID instead of becoming a second identity for
-        the same test.
+        str | None: The first stripped value matching ``TEST_ID_PATTERN``, or
+        None. A label present but malformed yields None, not a stored value.
     """
     for key in (TEST_ID_LABEL, ALLURE_ID_LABEL):
         candidate = labels.get(key)
@@ -73,11 +96,12 @@ def read_parameters(payload: dict[str, Any]) -> dict[str, str]:
     """Collect an Allure ``parameters`` array into a mapping.
 
     Args:
-        payload: A raw result or report test-case object.
+        payload (dict[str, Any]): A raw result or report test-case object.
 
     Returns:
-        Parameter name to value, with the repr-style quoting Allure applies to
-        pytest values removed so that ``'chromium'`` is stored as ``chromium``.
+        dict[str, str]: Parameter name to value, with the repr-style quoting
+        Allure applies to pytest values removed, so ``'chromium'`` is stored as
+        ``chromium``.
     """
     parameters: dict[str, str] = {}
     for parameter in payload.get("parameters") or []:
@@ -88,9 +112,9 @@ def read_parameters(payload: dict[str, Any]) -> dict[str, str]:
     return parameters
 
 
-#: What a format-specific reader must return for one document: the duration,
-#: the failure message, and the step array, in that order. These are the only
-#: three things the raw and report schemas genuinely disagree about.
+#: FORMAT FIELDS a format-specific reader returns for one document: duration,
+#: failure message, stack trace, and the raw step array, in that order. These
+#: are the only things the raw and report schemas disagree about.
 FormatFields = tuple[int | None, str | None, str | None, list[dict[str, Any]] | None]
 FormatReader = Callable[[dict[str, Any]], FormatFields]
 
@@ -103,22 +127,20 @@ def parse_documents(
 ) -> list[ParsedResult]:
     """Decode and normalize every Allure document in an extracted artifact.
 
-    Both Allure parsers do the same three things - filter members, decode JSON,
-    build a result - and differ only in how they locate timing, message and
-    steps. That difference is passed in as ``read_format`` so the loop exists
-    once; two copies of it would be two places for a filtering rule to drift.
+    Design: ``DESIGN.md`` section 4.2.
 
     Args:
-        members: Archive member path to file contents.
-        base_params: Parameters derived from the artifact name.
-        read_format: Reads the format-specific fields from one document.
-        path_suffix: When given, only members whose path ends with it are read.
+        members (dict[str, bytes]): Archive member path to file contents.
+        base_params (dict[str, str]): Parameters derived from the artifact name.
+        read_format (FormatReader): Reads the format-specific fields from one
+            document.
+        path_suffix (str | None): When given, only members whose path ends with
+            it are read.
 
     Returns:
-        One ParsedResult per readable document. A member that is not valid JSON,
-        or that carries no ``fullName`` to derive identity from, is skipped
-        rather than aborting the artifact: one corrupt file in a run of hundreds
-        should cost one result, not the run.
+        list[ParsedResult]: One result per readable document, in member order.
+        A member that is not UTF-8 JSON, is not an object, or carries no
+        ``fullName`` is skipped without aborting the artifact.
     """
     results: list[ParsedResult] = []
     for path, content in members.items():
@@ -141,20 +163,19 @@ def build_result(
 ) -> ParsedResult:
     """Assemble a ParsedResult from the parts both Allure schemas agree on.
 
-    The two formats disagree about timing, step location, and where a failure
-    message and stack trace live, so those four are resolved by the caller and
-    passed in. Everything else - identity, labels, parameters, the assigned test
-    ID - is read the same way from either schema, and is read here so that the
-    two parsers cannot drift apart in how they do it.
+    Parameters are the artifact's, overlaid by the document's ``parameters``;
+    a bracketed parameter id from ``fullName``, or failing that from ``name``,
+    is added as ``id`` unless the parameters already hold one.
 
     Args:
-        payload: A raw result or report test-case object.
-        base_params: Parameters derived from the artifact name.
-        fields: Duration, message, trace and step array, already resolved from
-            whichever schema produced this document.
+        payload (dict[str, Any]): A raw result or report test-case object.
+        base_params (dict[str, str]): Parameters derived from the artifact name.
+        fields (FormatFields): Duration, message, trace and step array, already
+            resolved from whichever schema produced this document.
 
     Returns:
-        The normalized result.
+        ParsedResult: The normalized result. ``display_name`` is ``name``, or
+        the base test name when ``name`` is absent.
     """
     duration_ms, message, trace, raw_steps = fields
     module, test_name = split_full_name(str(payload.get("fullName") or ""))
@@ -164,9 +185,10 @@ def build_result(
     params = dict(base_params)
     params.update(read_parameters(payload))
 
-    # A parametrized case may state its parameters structurally, in the bracket
-    # suffix of the full name, or only in the display name. Prefer them in that
-    # order so a suite that sets none of the first two still yields a usable row.
+    # Added 2026-08-16. A parametrized case may state its parameters
+    # structurally, in the bracket suffix of the full name, or only in the
+    # display name. Prefer them in that order so a suite that sets none of the
+    # first two still yields a usable row.
     if parameter_id is None:
         _, parameter_id = strip_parameters(str(payload.get("name") or ""))
     if parameter_id is not None and "id" not in params:
@@ -195,18 +217,20 @@ def flatten_steps(
 ) -> list[ParsedStep]:
     """Flatten Allure's nested step tree into an ordered list.
 
-    Nesting is preserved through ``parent_ordinal`` rather than by keeping the
-    tree, because the questions worth asking of this data - which step most
-    often precedes a failure - are aggregations over a flat table.
+    Each step is followed by its own sub-steps, which carry its ordinal as
+    their ``parent_ordinal``. Design: ``DESIGN.md`` section 6.
 
     Args:
-        raw_steps: The ``steps`` array, or None when the test recorded none.
-        parent_ordinal: Ordinal of the enclosing step, None at the top level.
-        counter: Single-element list used as a shared mutable ordinal counter
-            across the recursion. Callers pass None.
+        raw_steps (list[dict[str, Any]] | None): The ``steps`` array, or None
+            when the test recorded none.
+        parent_ordinal (int | None): Ordinal of the enclosing step, None at the
+            top level.
+        counter (list[int] | None): Single-element list used as a shared
+            mutable ordinal counter across the recursion. Callers pass None.
 
     Returns:
-        Steps in depth-first order, each carrying its own ordinal.
+        list[ParsedStep]: Steps in depth-first order, ordinals counting from
+        zero.
     """
     if counter is None:
         counter = [0]
@@ -232,10 +256,12 @@ def step_duration_ms(step: dict[str, Any]) -> int | None:
     """Read a step's duration from whichever of the two shapes it carries.
 
     Args:
-        step: One entry from a ``steps`` array.
+        step (dict[str, Any]): One entry from a ``steps`` array.
 
     Returns:
-        Duration in milliseconds, or None when the step recorded no timing.
+        int | None: Duration in milliseconds from a ``time`` block (report
+        schema) or a top-level ``start``/``stop`` pair (raw schema), or None
+        when the step recorded no usable timing.
     """
     time_block = step.get("time")
     if isinstance(time_block, dict):
@@ -244,17 +270,17 @@ def step_duration_ms(step: dict[str, Any]) -> int | None:
 
 
 def _span_ms(start: Any, stop: Any, duration: Any) -> int | None:
-    """Compute a millisecond duration from a start/stop pair or a given value.
+    """Compute a millisecond duration from a given value or a start/stop pair.
 
     Args:
-        start: Epoch milliseconds, or None.
-        stop: Epoch milliseconds, or None.
-        duration: A duration already in milliseconds, or None.
+        start (Any): Epoch milliseconds, or None.
+        stop (Any): Epoch milliseconds, or None.
+        duration (Any): A duration already in milliseconds, or None.
 
     Returns:
-        The duration, or None when neither form is usable. A stop before its
-        start yields None rather than a negative number, since a negative
-        duration is a data fault and averaging it would hide the fault.
+        int | None: ``duration`` when it is numeric, else ``stop - start``
+        when both are numeric, else None. A stop before its start yields None,
+        never a negative number (``DESIGN.md`` section 6).
     """
     if isinstance(duration, (int, float)):
         return int(duration)

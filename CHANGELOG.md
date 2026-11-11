@@ -17,6 +17,32 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.5.1 - 2026-11-10
+
+### Changed
+
+- **Every comment and docstring follows one standard, the one AP-Harness-QC
+  set for itself.** A module docstring now opens with what the file is, its
+  `Created` and `Last updated` dates, what it contains and where it sits in the
+  flow, and ends with the DESIGN.md sections that specify it. Function and class
+  docstrings are Google style with typed `Args`, a `Returns` that is never
+  omitted, and `Raises` where something raises. Decision comments carry the date
+  the decision was made. Comments and docstrings only: with them set aside, every
+  module is unchanged.
+- **The reasoning the docstrings carried moved to DESIGN.md**, so a docstring
+  states behavior and points to why. Nothing was dropped: it joined §4.2, §4.3
+  and §5 to §10, and three sections are new: §10.1 (the duration error budget),
+  §10.2 (how tests and repositories are named in a report) and §10.3 (the
+  published page).
+
+### Fixed
+
+- **DESIGN.md said nothing had been built yet**, and §9 described a
+  per-repository watermark and a `--backfill` flag the collector never had. The
+  status line now says the document is kept as the design as built, and §9
+  describes resuming by the artifacts ledger and exact keys, which is what the
+  code does.
+
 ## v0.5.0 - 2026-11-10
 
 ### Added

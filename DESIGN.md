@@ -1,9 +1,12 @@
 # Portfolio Test-Results Collector - Design
 
-> **Document status:** describes the design as of **2026-08-16**, before any
-> implementation. Nothing here has been built yet. Decisions are recorded with
-> the evidence that produced them, so a later reader can tell which choices were
-> forced by measurement and which were judgement calls that may be revisited.
+> **Document status:** written **2026-08-16**, before implementation, and kept
+> as the design of the collector as built; last updated **2026-11-10**, when
+> the reasoning the code's docstrings carried moved here (§4.2, §4.3, §5 to §10,
+> and the new §10.1 to §10.3). Where the build departed from the plan, the
+> section says so. Decisions are recorded with the evidence that produced them,
+> so a later reader can tell which choices were forced by measurement and which
+> were judgement calls that may be revisited.
 
 ---
 
@@ -183,6 +186,23 @@ Worth stating plainly, because it retires a requirement that looked large:
 repository.** Both suites already use `allure.step`, and the data is already
 structured. It requires a parser.
 
+**A generated report carries other runs' results, and they are skipped.**
+`allure generate` merges a `history/` directory, so a generated report holds the
+current run's results *and* retained entries from earlier runs, the latter
+flagged `retry: true`. Reading them attributes another run's outcome to this
+one: it was observed as one test holding both a pass and a failure inside a
+single run id, with start timestamps six hours apart. They are neither retries
+within the run nor this run's evidence, so the report parser skips them. Raw
+results (4.1) are written by the run itself and carry no merged history, which
+is why only the report parser needs the guard.
+
+**Both Allure parsers share one reading loop.** They filter members, decode
+JSON and build a result in the same way, and differ only in where timing, the
+failure message, the trace and the steps live. Identity, labels, parameters and
+the assigned test ID are read from either schema by one shared helper, and the
+format-specific part is passed in, so the loop exists once: two copies of it
+would be two places for a filtering rule to drift.
+
 ### 4.3 JUnit XML
 
 Standard pytest output, confirmed shape:
@@ -197,6 +217,12 @@ Standard pytest output, confirmed shape:
 The only per-test format PublicAP emits, and a second source for CountryWeather.
 Carries no steps - an asymmetry the schema represents honestly rather than
 papers over. See §6.
+
+JUnit splits a failure's two diagnostics across an attribute and the element
+body: `message` holds the assertion summary and the element text holds the
+traceback pytest captured. Both are kept, because the summary says what broke
+and only the body says where. An `<error>` is a fault in the harness rather than
+a failed assertion, so it maps to `broken`, not `failed`.
 
 ---
 
@@ -239,11 +265,30 @@ this portfolio - CountryWeather still carries two tracked files under
 `test_results/` that were build output committed before the ignore rule existed.
 Generated things do not go in git.
 
+**Every partition kind is routed by its own suffix.** Results, runs, anomalies
+and the artifacts ledger (§8) each have a file suffix, and both the store and
+the index match each kind positively. Results were once read as "whatever is
+not runs or anomalies", which would have read the ledger, the first new kind,
+as results; an unrecognized file is now skipped with a warning.
+
+**Ingestion collaborators travel as one value.** The API client, the store, the
+summary counters and the dry-run flag are grouped into one context object
+rather than threaded as four parameters through every helper, which keeps the
+call sites readable and means a fifth collaborator does not touch six
+signatures.
+
 ---
 
 ## 6. Data model
 
 Three record types, written as NDJSON and mirrored into SQLite tables.
+
+**Every record is a frozen dataclass, not a dict.** The three source formats
+disagree about almost everything - timing representation, where steps live, what
+a name means - so the point at which a parser hands its output on is the point
+where those differences must already be resolved. A typed record makes an
+unresolved difference a construction error instead of a `KeyError` in a report
+three steps later.
 
 ### `runs`
 
@@ -272,10 +317,27 @@ Three record types, written as NDJSON and mirrored into SQLite tables.
 | `source_format` | ingest | `allure_raw`/`allure_report`/`junit` - makes every gap below explainable |
 | `has_steps` | derived | false for JUnit **and** for Allure results with none |
 
+**An unrecognized status becomes `unknown`, never a guess.** An unmapped
+vocabulary then shows up in a report as a visible gap instead of a silent pass.
+
+**A trace is kept verbatim.** Every non-passing result carries its stack trace
+as the source recorded it, alongside the message: a message says a test failed,
+a trace says where, and the line that explains a flake is rarely the one a
+summarizer would keep.
+
+**An inverted start/stop pair yields a null duration.** A stop before its start
+is a data fault; recording it as null keeps it out of an average rather than
+hiding it inside one.
+
 ### `steps`
 
 Allure only. One row per step, with `ordinal`, `name`, `status`, `duration_ms`,
 and a nullable `parent_ordinal` for nesting.
+
+The step tree is flattened depth-first rather than kept as a tree, because the
+questions worth asking of it - which step most often precedes a failure - are
+aggregations over a flat table, and `parent_ordinal` keeps the nesting
+recoverable.
 
 `has_steps` is what a report must check before claiming step coverage.
 Otherwise "no failing steps recorded" reads as a clean result when it actually
@@ -301,6 +363,10 @@ emitted for a run only when that run falls between the test's first and last
 observation for its repository, inclusive. Outside that window the test either
 did not exist yet or has been deleted, and marking those runs `not_run` would
 manufacture history rather than record it.
+
+**Only runs that reported at least one result are candidates.** A run whose
+artifact was empty proves nothing about which tests ran, so a test's absence
+from it is not recorded.
 
 **The rows are derived, not observed, so they live in the index rather than the
 log.** The NDJSON record holds what the artifacts actually said; `not_run` is an
@@ -371,6 +437,10 @@ label concept, so PublicAP needs pytest's `record_property("test_id", ...)`,
 which emits `<property name="test_id" value="PAP_10001"/>` inside `<testcase>`.
 The parsers therefore read `test_id` from two different places, and neither is
 the test name.
+
+A label or property that is present but does not match the pattern is not
+stored. A typo then shows up as a missing ID instead of becoming a second
+identity for the same test.
 
 **It cannot work retroactively, and that decides the schema.** The artifacts
 being backfilled were produced before any ID existed - CountryWeather's oldest
@@ -468,6 +538,11 @@ sources:
 Adding a project is a config entry. That is the concrete form of the claim
 in §3 that customization is configuration rather than per-repo code.
 
+**The configuration is validated once, at startup.** A misspelled parser name,
+an unknown policy or an artifact pattern that will not compile stops the run
+immediately with a message naming the offending entry, rather than surfacing
+hours later as a repository that quietly produced no rows.
+
 The two Multi-LLM Evaluation repositories, AP-Harness-QC and AP-Model-QC, are
 the case that proved it, and the case that needed two more keys. Between them
 they upload thousands of artifacts, and collecting everything would have grown
@@ -479,7 +554,26 @@ volume, and both default to the behavior every earlier entry already had:
   them. A step list is diagnostic, and a passing result has nothing to diagnose.
 - `keep: latest_per_day` reads only the newest artifact per completed UTC day
   and parameter set. It is used for the unit tiers, which must be fully green on
-  main by rule, so one run a day records that they held.
+  main by rule, so one run a day records that they held. Today is excluded:
+  choosing the latest of a day still running would let an afternoon run add a
+  second "latest" for the same day on the next collection, so a day is
+  collected once, after it ends.
+
+Two per-source keys came with the same repositories:
+
+- `test_id_from_name` recovers an assigned ID from the test name, for a suite
+  that writes it there (`MQC_CMN_UNI_112016_red_when_...`) instead of
+  publishing a label or property. It is a regex with a `test_id` group, and a
+  pattern without one is refused, since it could match a name without yielding
+  an ID.
+- `code` is the short code the report prints, defaulting to `prefix`. The two
+  Multi-LLM Evaluation repositories share the `MQC` prefix, and a legend in
+  which one code expands to two repositories is not a legend.
+
+Both `test_id_from_name` and the step policy are applied by ingestion after
+parsing, not by the parsers, because both depend on configuration the parsers
+never see; the parsers stay format readers that know nothing about any one
+source. An ID a parser already found is never overwritten.
 
 Only the Ubuntu leg is collected; the Windows leg replays the same recordings.
 The P0, P1 and P2-P4 bands are kept on every run, and the live evaluation runs
@@ -488,6 +582,12 @@ where a failure can belong to the model rather than the code.
 
 An artifacts ledger (`<month>.artifacts.ndjson`) records each artifact once it
 has been read, so a daily collection downloads only artifacts it has not seen.
+Without it every collection downloads every artifact still within retention,
+only to find each row already recorded: harmless at a few hundred artifacts,
+and over a gigabyte a day once the Multi-LLM Evaluation repositories, with
+thousands of artifacts between them, are collected. An artifact is ledgered
+only after its rows are on disk, so an interrupted collection reads it again
+rather than skipping rows it never wrote.
 
 Note that VM-Deployment-and-Configuration has run under **two workflow names** -
 `CI` (21 runs) and `VM Cluster CI` (3) - so ingestion keys on artifact name and
@@ -497,11 +597,29 @@ repository, never on workflow name.
 
 ## 9. Ingestion mechanics
 
-- **Watermark resume.** Per repository, the highest ingested `run_id` is stored;
-  a normal run fetches only what is newer. `--backfill` ignores the watermark.
+- **One artifact listing per repository.** Artifact listings carry a
+  `workflow_run` block, so one paginated listing per repository associates every
+  artifact with its run. Fetching the run for each artifact, the obvious
+  implementation, would turn a few hundred requests into a few thousand for no
+  gain.
+- **Resume by ledger, not by watermark.** The design first planned a
+  per-repository watermark (the highest ingested `run_id`) and a `--backfill`
+  flag to ignore it. Neither was built: every collection lists every artifact
+  still within retention, and since 2026-11-10 skips without downloading any
+  artifact the ledger (`<month>.artifacts.ndjson`, §8) records as read. An
+  artifact is ledgered only after its rows are on disk, so an interrupted run
+  reads it again rather than losing rows.
 - **Idempotent.** Upsert keyed on `(repo, run_id, attempt, test_uid,
   params_hash)`. Re-running never duplicates, so a partial failure is fixed by
-  running again.
+  running again. Duplicate detection reads every key on disk at startup rather
+  than trusting a high-water mark, because a run interrupted partway through a
+  repository leaves some of a run's rows written and some not.
+- **One bad input costs one input.** An unreadable archive, a member that is not
+  valid JSON or XML, a document with no `fullName` to derive identity from, or a
+  malformed line in a partition is skipped (with a warning where it is the
+  record itself) rather than aborting the artifact, the run or startup. One
+  corrupt file in a run of hundreds should cost one result, and one bad line
+  must not make the whole history unreadable.
 - **Extract selectively.** The zips total ~126 MB mostly because of Allure's
   HTML assets. Only files matching the configured glob are read out of the
   archive; nothing else is written to disk.
@@ -513,6 +631,18 @@ repository, never on workflow name.
   with a counted warning. After 2026-08-19 this will be the steady state for the
   oldest CountryWeather runs, and the tool must not treat routine data loss as a
   failure.
+- **An artifact present but empty is recorded as data.** It is the opposite of
+  expiry: the upload step worked, so the run believed it had something to
+  publish, and it did not. That is evidence of a reporting misconfiguration in
+  the source repository, and a finding kept only in a log line that scrolls away
+  is a finding lost, so it is written to `<month>.anomalies.ndjson`. Each row
+  carries the reason, the glob and parser that were applied, and a sample of
+  what the archive actually held, because a wrong glob (a misconfigured
+  collector) and an empty report (a misreporting suite) produce the same
+  symptom and want opposite fixes. The sample is bounded: enough paths to
+  recognize the layout, not a manifest of several hundred lines in the durable
+  record. The end-of-run summary lists the actionable reasons apart from
+  expiry, because one is a problem and the other is the weather.
 
 ### Credentials
 
@@ -523,6 +653,10 @@ repository alone - the token reads any public repository, the secret lives in
 one. The built-in
 `GITHUB_TOKEN` is scoped to the repository running the workflow and cannot read
 another's artifacts.
+
+Locally, with no token variable set, the client falls back to the
+authenticated `gh` CLI, so a developer who has already signed in needs no extra
+setup. CI supplies `PORTFOLIO_READ_TOKEN` and never reaches the fallback.
 
 The token is never printed, never written to a file, and never embedded in a
 remote URL. Downloading artifacts requires authentication even for public
@@ -535,18 +669,117 @@ narrowest scope that works.
 
 All descriptive, all plain SQL over the derived index.
 
+**Every figure is a count or an order statistic.** Nothing is modelled and
+nothing is extrapolated, because the corpus does not support it: thirty-odd
+test-level failures across a portfolio is a list, not a distribution, and
+presenting it as a rate would imply precision the data does not have. Failures
+are therefore listed in full rather than charted. Where a number is too small to
+carry an inference, the report says so in the output rather than leaving the
+reader to work it out.
+
+**Two ideas are kept apart.** *Same-input disagreement* - identical commit,
+identical code, different outcome - is the only thing that proves flakiness,
+and today it exists only in PublicAP's build matrix. *Volatility* - how often a
+test's outcome changes over time - cannot distinguish a flaky test from one that
+broke and was fixed, so it is labelled a signal rather than a verdict.
+
 - **Flip rate** per `(test_uid, params)`: outcome changes over ordered runs,
   restricted to rows with a resolved `sut_version`.
 - **Cross-leg disagreement** for PublicAP: same commit, four matrix legs,
   differing outcomes. The only genuine same-input signal available today, and
-  the first thing likely to say something real.
+  the first thing likely to say something real. The comparison holds the test
+  case fixed and varies only the environment parameters, `os`, `python` and
+  `browser`, which come from the artifact name and describe *where* a test ran
+  rather than *what it ran against*. Every other parameter is part of the case:
+  pooling them made a parametrized test that passes for Brazil and fails for
+  Germany look like disagreement, and produced five such false positives in the
+  first render.
 - **Duration drift**: p50/p95 per test over time, flagging tests whose p95 has
   moved beyond a threshold. Useful well before failure data accumulates, because
-  every passing run contributes a measurement.
+  every passing run contributes a measurement. Percentiles are taken by nearest
+  rank without interpolating: interpolation invents a value that was never
+  measured, and for durations drawn from a few dozen runs reporting a real
+  observation is more honest. Only passing runs count, because a failed test's
+  duration measures where it gave up, not what it costs.
 - **Never-failed inventory**: tests with no failure in recorded history -
   candidates for a scheduled tier rather than a per-push one.
 - **Step-level failure frequency** (Allure sources only): which `allure.step`
   most often precedes a failure. Must respect `has_steps`.
+
+### 10.1 Duration error budget
+
+A single slow run failing a build is noise; sustained degradation is signal. An
+error budget expresses that difference: it tolerates the occasional blip and
+reports only when breaches become routine. A run breaches when it exceeds a
+multiple of that test's own baseline median, and the budget allows a fraction of
+the trailing window to breach before it is spent. The policy lives in the `slo`
+block of `config/sources.yaml`.
+
+**The objective is relative, by necessity.** No suite in this portfolio
+declares a per-test duration SLA, so an absolute threshold would have to be
+seeded from this very history and then measured against it, which proves
+nothing; and one figure across tests ranging from a millisecond to half a
+minute would be meaningless. A relative objective answers the question actually
+worth asking: is this test getting slower than it used to be.
+
+**It does not restate CountryWeather's per-request API thresholds.** Those
+govern one HTTP call and this record holds whole-test durations, so the same
+number would be measuring a different thing under the same name. **And it does
+not gate anything** (§1): it publishes budget consumption, and a suite that owns
+an SLO is the thing entitled to fail a build over it.
+
+**Two thresholds keep a verdict honest.** Below `min_observations` in the
+window no verdict is published, because a budget computed from a handful of
+runs is arithmetic, not evidence. Below `floor_ms` of baseline median a test is
+excluded, because a multiple of a millisecond is measurement noise, not
+degradation. The floor was measured rather than guessed: without it the
+relative objective reported 51 of 225 tests as having spent their budget, since
+the median test has a 1 ms baseline and 145 of 234 sit under 10 ms, so a 3x
+tolerance meant "breached at 3 ms". With a 100 ms floor, 78 tests carried a
+verdict and none had breached.
+
+**Only tests that breached are listed.** A table of identical zeroes is not a
+finding, and ranking ties arbitrarily would invite a reader to read an order
+into rows that have none.
+
+### 10.2 How a test and a repository are named in a table
+
+**Every table names the test as well as its ID.** An assigned ID is the right
+key and the wrong label: `PAWA_10020` is stable across renames precisely
+because it carries no meaning, so a report printing only the ID would send every
+reader to the source to find out which test it is. Under a test-management
+system the ID would resolve to a title; there is none here, and the report does
+not assume one. The ID is printed to cite and track, the name to read.
+
+**Repository columns use a short code.** Spelling
+`VM-Deployment-and-Configuration` in every row costs a third of a table's width
+and tells the reader nothing they do not learn once. The code is the prefix of
+the suite's assigned IDs (or its configured `code`, §8), so the column agrees
+with the IDs beside it instead of being a second naming scheme.
+
+**The codes are expanded once, in a legend ahead of the tables.** The legend is
+a lookup rather than a measurement, so it is its own table: folding it into the
+inventory would widen a statistics table to carry a two-column fact and bury the
+row a reader is scanning for behind four numeric columns. It lists only
+repositories the record actually holds, since a configured source never
+collected does not belong in a legend for this report. Its assigned-ID count
+collapses to one row per test first: a test's ID lives on the rows recorded
+since the scheme existed while its older rows still carry `NULL`, so counting
+`NULL`s directly reported every test as unassigned.
+
+### 10.3 The published page
+
+The HTML page is generated from the record on every run, never hand-written,
+and that is the point rather than a convenience. A hand-maintained statistics
+page states figures nobody re-checks, so it rots silently the first time the
+data moves - which is the defect this project exists to notice. A generated page
+cannot disagree with its source, because it has no independent copy of it.
+
+The converter handles only the Markdown the reports emit: headings, pipe
+tables, paragraphs, and inline bold and code. A Markdown library would add a
+dependency to a nightly job to support syntax nothing here produces. The page
+carries its own inline styles because it is served from a different origin than
+the portfolio site and cannot reach that site's stylesheet.
 
 ---
 

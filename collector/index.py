@@ -1,11 +1,31 @@
 """Build the queryable SQLite index from the append-only NDJSON record.
 
-The index is derived and disposable: it is rebuilt from scratch on every run and
-is gitignored. That is what lets the inference in it - the synthesized
-``not_run`` rows described below - be improved later without rewriting an
-append-only history that is supposed to record only what the artifacts said.
+Created: 2026-08-16
+Last updated: 2026-11-10
 
-Nothing here reads the network. Everything comes from ``data/``.
+This file contains the command line ``python -m collector.index`` (``main``);
+``build``, which rebuilds the index; ``read_partitions``, which reads one kind
+of partition; ``synthesize_not_run``, which infers absence rows; the private
+insert functions, one per table; and ``SCHEMA``, which defines the ``runs``,
+``results``, ``steps`` and ``anomalies`` tables.
+
+It runs after ingestion and before the reports (``make db``), reads nothing but
+``data/``, and replaces ``build/results.sqlite`` from scratch every time. Every
+report reads only this index, so a figure that is wrong here is wrong on the
+published page; a duplicated assigned ID stops the build before any report
+can run.
+
+**Absence is inferred here, not recorded.** A test missing from a run inside its
+own observed lifetime gets a ``not_run`` row with ``source_format='derived'``,
+and only runs that reported at least one result are candidates. These rows
+exist only in the index; the NDJSON record keeps what the artifacts said.
+
+**Identity is materialized as a column.** An assigned ID observed on any row
+for a ``test_uid`` becomes that test's ``identity`` on every row, including
+rows recorded before the ID existed; a test with no ID keeps its ``test_uid``.
+One ID claimed by two ``test_uid`` values raises ``ValueError``.
+
+Specified by ``DESIGN.md`` sections 5, 6 and 7.
 """
 
 from __future__ import annotations
@@ -33,6 +53,7 @@ NOT_RUN: Final[str] = "not_run"
 #: Marks rows this module inferred rather than read from an artifact.
 DERIVED_FORMAT: Final[str] = "derived"
 
+#: The index's tables and indexes, created on an empty database each build.
 SCHEMA: Final[str] = """
 CREATE TABLE runs (
     repo TEXT NOT NULL,
@@ -106,15 +127,21 @@ CREATE INDEX idx_steps_test ON steps (repo, test_uid);
 def read_partitions(data_dir: Path, suffix: str | None) -> list[dict[str, Any]]:
     """Read every NDJSON partition of one kind.
 
+    A file is read only when its name ends with the wanted suffix, so a new
+    kind of partition is never read as results. Design: ``DESIGN.md``
+    section 5.
+
     Args:
-        data_dir: Root of the durable record.
-        suffix: Partition suffix to read, or None for result partitions.
-            Results are identified by their own suffix rather than by carrying
-            none of the others, so a new kind of partition - the artifact
-            ledger was the first - can never be read as results.
+        data_dir (Path): Root of the durable record.
+        suffix (str | None): Partition suffix to read, or None for result
+            partitions.
 
     Returns:
-        Every decodable row across all repositories and months.
+        list[dict[str, Any]]: Every non-blank row across all repositories and
+        months, in sorted path order.
+
+    Raises:
+        json.JSONDecodeError: If a line is not valid JSON.
     """
     wanted = suffix or RESULTS_SUFFIX
     rows: list[dict[str, Any]] = []
@@ -134,25 +161,19 @@ def synthesize_not_run(
 ) -> list[dict[str, Any]]:
     """Infer rows for tests absent from runs they were expected to appear in.
 
-    A test missing from a run is a fact worth recording, not an omission. These
-    suites deselect by marker routinely - ``-m "not external"``, ``--env=weather``
-    - so without this, "never failed" is indistinguishable from "has not run
-    since May", and a rate computed over runs where the test happened to appear
-    silently uses a different denominator per test.
-
-    Synthesis is bounded by each test's **observed lifetime**: a row is created
-    only for runs falling between that test's first and last appearance in its
-    repository. Outside that window the test either did not exist yet or has
-    been deleted, and filling those in would manufacture history rather than
-    record its absence.
+    A row is created for a run of the test's repository when that run reported
+    at least one result, did not report this test, and started between the
+    test's first and last observed run, inclusive. Outside that lifetime nothing
+    is synthesized. Design: ``DESIGN.md`` section 6.
 
     Args:
-        results: Every observed result row.
-        runs: Every run row, used for chronological ordering.
+        results (list[dict[str, Any]]): Every observed result row.
+        runs (list[dict[str, Any]]): Every run row, used for chronological
+            ordering.
 
     Returns:
-        Synthesized rows carrying ``status='not_run'`` and
-        ``source_format='derived'``.
+        list[dict[str, Any]]: Synthesized rows carrying ``status='not_run'``
+        and ``source_format='derived'``.
     """
     observed = _observations(results, runs)
     synthesized: list[dict[str, Any]] = []
@@ -173,15 +194,17 @@ class _Observations:
     """Lookup tables derived once from the record, for absence detection.
 
     Attributes:
-        started: Run start time by repository and run id.
-        runs_with_results: Runs that reported at least one result, per
-            repository. A run whose artifact was empty proves nothing about
-            which tests ran, so it is not a candidate for absence.
-        seen: Every repository, run and test actually observed together.
-        template: One representative row per test, used to carry stable fields
-            such as module and assigned ID onto a synthesized row.
-        appearances: Run start times at which each test was observed, which
-            bound its lifetime.
+        started (dict[tuple[str, int], str]): Run start time by repository and
+            run id.
+        runs_with_results (dict[str, set[int]]): Runs that reported at least
+            one result, per repository; only these are candidates for absence.
+        seen (set[tuple[str, int, str]]): Every repository, run and test
+            actually observed together.
+        template (dict[str, dict[str, Any]]): The first observed row per test,
+            which carries stable fields such as module and assigned ID onto a
+            synthesized row.
+        appearances (dict[tuple[str, str], list[str]]): Run start times at
+            which each test was observed, which bound its lifetime.
     """
 
     started: dict[tuple[str, int], str]
@@ -195,11 +218,12 @@ def _observations(results: list[dict[str, Any]], runs: list[dict[str, Any]]) -> 
     """Build the lookup tables absence detection needs, in one pass.
 
     Args:
-        results: Every observed result row.
-        runs: Every run row.
+        results (list[dict[str, Any]]): Every observed result row.
+        runs (list[dict[str, Any]]): Every run row.
 
     Returns:
-        The populated lookup tables.
+        _Observations: The populated lookup tables. A run with no start time
+        counts as starting at the empty string.
     """
     started = {(run["repo"], run["run_id"]): run.get("started_at") or "" for run in runs}
     runs_with_results: dict[str, set[int]] = defaultdict(set)
@@ -223,14 +247,16 @@ def _not_run_row(
     """Build one synthesized absence row.
 
     Args:
-        source: A representative observed row for this test, for its stable
-            descriptive fields.
-        repo: Repository the absence belongs to.
-        run_id: Run the test did not appear in.
-        test_uid: The absent test.
+        source (dict[str, Any]): A representative observed row for this test,
+            for its stable descriptive fields.
+        repo (str): Repository the absence belongs to.
+        run_id (int): Run the test did not appear in.
+        test_uid (str): The absent test.
 
     Returns:
-        A result row carrying ``not_run`` and ``derived``.
+        dict[str, Any]: A result row carrying ``not_run`` and ``derived``, with
+        attempt 1, empty parameters, ``params_hash`` ``not_run``, no duration,
+        message, trace, labels or steps.
     """
     return {
         "repo": repo,
@@ -259,11 +285,16 @@ def build(data_dir: Path, index_path: Path) -> dict[str, int]:
     """Rebuild the index from the durable record.
 
     Args:
-        data_dir: Root of the durable record.
-        index_path: Where to write the SQLite file. Replaced if it exists.
+        data_dir (Path): Root of the durable record.
+        index_path (Path): Where to write the SQLite file. Replaced if it
+            exists, and its directory created if it does not.
 
     Returns:
-        Row counts per table, for the caller to report.
+        dict[str, int]: Row counts for ``runs``, ``observed``, ``not_run``,
+        ``steps`` and ``anomalies``, for the caller to report.
+
+    Raises:
+        ValueError: If one assigned ID is claimed by more than one test.
     """
     results = read_partitions(data_dir, None)
     runs = read_partitions(data_dir, RUNS_SUFFIX)
@@ -295,11 +326,14 @@ def build(data_dir: Path, index_path: Path) -> dict[str, int]:
 
 
 def _insert_runs(connection: sqlite3.Connection, runs: list[dict[str, Any]]) -> None:
-    """Insert run rows.
+    """Insert run rows, the last one winning on a repeated key.
 
     Args:
-        connection: Open database connection.
-        runs: Run rows from the record.
+        connection (sqlite3.Connection): Open database connection.
+        runs (list[dict[str, Any]]): Run rows from the record.
+
+    Returns:
+        None
     """
     connection.executemany(
         "INSERT OR REPLACE INTO runs VALUES (:repo, :run_id, :attempt, :workflow, :event,"
@@ -311,28 +345,21 @@ def _insert_runs(connection: sqlite3.Connection, runs: list[dict[str, Any]]) -> 
 def _insert_results(connection: sqlite3.Connection, results: list[dict[str, Any]]) -> None:
     """Insert result rows, computing the reporting identity for each.
 
-    ``identity`` is materialized as a column so every report groups the same way
-    without repeating the expression - but it is **not** a plain
-    ``COALESCE(test_id, test_uid)``. That would split each test in two at the
-    moment assigned IDs arrived: every row before the change keyed by uid, every
-    row after keyed by ID, and a test with one long history counted as two with
-    short ones. Which is the exact failure the IDs were introduced to prevent.
-
-    Instead an ID observed anywhere for a ``test_uid`` becomes that test's
-    identity everywhere, including on rows recorded years before the ID existed.
-    That is what actually stitches pre-ID history to post-ID history, and it is
-    only sound because uniqueness is enforced: one ID never maps to two uids.
+    ``identity`` is the assigned ID observed anywhere for the row's
+    ``test_uid``, or the ``test_uid`` itself when none was. It is not
+    ``COALESCE(test_id, test_uid)``, which would split a test's history at the
+    moment IDs arrived. Parameters and labels are stored as key-sorted JSON,
+    and the two flags as 0 or 1. Design: ``DESIGN.md`` section 7.
 
     Args:
-        connection: Open database connection.
-        results: Observed and synthesized result rows.
+        connection (sqlite3.Connection): Open database connection.
+        results (list[dict[str, Any]]): Observed and synthesized result rows.
+
+    Returns:
+        None
 
     Raises:
-        ValueError: If one assigned ID is claimed by more than one test. A
-            duplicated ID merges two histories into one, which is harder to
-            notice than a fork because the row count still looks plausible, so
-            it fails the build rather than producing an average over two
-            different tests.
+        ValueError: If one assigned ID is claimed by more than one test.
     """
     assigned = _assigned_identities(results)
     payload = [
@@ -358,13 +385,15 @@ def _assigned_identities(results: list[dict[str, Any]]) -> dict[str, str]:
     """Map every test that has ever published an assigned ID to that ID.
 
     Args:
-        results: Observed and synthesized result rows.
+        results (list[dict[str, Any]]): Observed and synthesized result rows.
 
     Returns:
-        ``test_uid`` to assigned ID, for the tests that carry one.
+        dict[str, str]: ``test_uid`` to assigned ID, for the tests that carry
+        one.
 
     Raises:
-        ValueError: If one ID is claimed by more than one ``test_uid``.
+        ValueError: If one ID is claimed by more than one ``test_uid``; the
+            message lists every collision.
     """
     by_uid: dict[str, str] = {}
     claimants: dict[str, set[str]] = defaultdict(set)
@@ -388,8 +417,12 @@ def _insert_steps(connection: sqlite3.Connection, results: list[dict[str, Any]])
     """Flatten and insert recorded steps.
 
     Args:
-        connection: Open database connection.
-        results: Observed result rows, whose ``steps`` arrays are unpacked.
+        connection (sqlite3.Connection): Open database connection.
+        results (list[dict[str, Any]]): Observed result rows, whose ``steps``
+            arrays are unpacked one row per step.
+
+    Returns:
+        None
     """
     payload = [
         {
@@ -410,11 +443,14 @@ def _insert_steps(connection: sqlite3.Connection, results: list[dict[str, Any]])
 
 
 def _insert_anomalies(connection: sqlite3.Connection, anomalies: list[dict[str, Any]]) -> None:
-    """Insert anomaly rows.
+    """Insert anomaly rows, with ``detail`` stored as key-sorted JSON.
 
     Args:
-        connection: Open database connection.
-        anomalies: Anomaly rows from the record.
+        connection (sqlite3.Connection): Open database connection.
+        anomalies (list[dict[str, Any]]): Anomaly rows from the record.
+
+    Returns:
+        None
     """
     payload = [
         {**row, "detail": json.dumps(row.get("detail") or {}, sort_keys=True)}
@@ -431,10 +467,14 @@ def main(argv: list[str] | None = None) -> int:
     """Rebuild the index from the command line.
 
     Args:
-        argv: Argument vector, defaulting to ``sys.argv``.
+        argv (list[str] | None): Argument vector, defaulting to ``sys.argv``.
 
     Returns:
-        Process exit code.
+        int: Process exit code: 0 once the index is built, 1 when the data
+        directory does not exist.
+
+    Raises:
+        ValueError: If one assigned ID is claimed by more than one test.
     """
     parser = argparse.ArgumentParser(
         prog="python -m collector.index",

@@ -1,11 +1,30 @@
 """Record types shared by the parsers, the store, and the ingest orchestration.
 
-Every record is a frozen dataclass rather than a dict. The three source formats
-disagree about almost everything - timing representation, where steps live, what
-a name means - so the point at which a parser hands its output on is the point
-where those differences must already be resolved. A typed record makes an
-unresolved difference a construction error instead of a ``KeyError`` in a report
-three steps later.
+Created: 2026-08-16
+Last updated: 2026-11-10
+
+This file contains the shared status vocabulary (``PASSED``, ``FAILED``,
+``BROKEN``, ``SKIPPED``, ``UNKNOWN``) and ``TEST_ID_PATTERN``; the name helpers
+``normalize_status``, ``split_full_name``, ``strip_parameters`` and
+``params_hash``; and the three frozen records :class:`ParsedStep`,
+:class:`ParsedResult` and :class:`RunRecord`.
+
+The parsers run first and build ``ParsedResult`` and ``ParsedStep`` values from
+whichever format an artifact carries. Ingestion then builds a ``RunRecord`` per
+Actions run and renders both through ``to_row`` into the NDJSON record, which
+the index and every report read. A field a record does not carry is a column no
+later step can fill.
+
+**Identity is built from the module path and function name only.**
+``test_uid`` is ``{repo}::{module}::{test_name}``; parameters live in
+``params`` and are hashed into the row key by ``params_hash``, and the display
+name, which may be an ``@allure.title``, takes no part.
+
+**Status has one vocabulary.** ``normalize_status`` maps every source spelling
+onto the five constants, and anything unrecognized becomes ``unknown``.
+``not_run`` is not produced here; the index synthesizes it.
+
+Specified by ``DESIGN.md`` sections 6 and 7.
 """
 
 from __future__ import annotations
@@ -16,9 +35,9 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Final
 
-#: Status values every parser must normalize onto. ``not_run`` is never produced
-#: by a parser - it is synthesized in the derived layer for a test that is absent
-#: from a run it was expected to appear in.
+#: STATUS VOCABULARY every parser normalizes onto. ``not_run`` is never produced
+#: by a parser; the derived layer synthesizes it for a test absent from a run it
+#: was expected to appear in (``DESIGN.md`` section 6).
 PASSED: Final[str] = "passed"
 FAILED: Final[str] = "failed"
 BROKEN: Final[str] = "broken"
@@ -45,7 +64,8 @@ _FULL_NAME_SEPARATOR: Final[str] = "#"
 #: Captures a trailing pytest parameter id: ``test_x[germany]`` -> ``germany``.
 _PARAM_SUFFIX: Final[re.Pattern[str]] = re.compile(r"^(?P<base>.+?)\[(?P<params>.*)\]$")
 
-#: Shape of an assigned test ID, e.g. ``PAWA_10001``. See DESIGN.md section 7.
+#: ASSIGNED TEST ID SHAPE, per ``DESIGN.md`` section 7: three or four capitals,
+#: an underscore, five to eight digits, e.g. ``PAWA_10001``.
 TEST_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{3,4}_\d{5,8}$")
 
 
@@ -53,12 +73,13 @@ def normalize_status(raw: str | None) -> str:
     """Map a source-format status onto the shared vocabulary.
 
     Args:
-        raw: Status string as the source format spelled it, or None.
+        raw (str | None): Status string as the source format spelled it, or
+            None.
 
     Returns:
-        One of the module-level status constants. Anything unrecognized becomes
-        ``unknown`` rather than being guessed at, so an unmapped vocabulary shows
-        up in a report as a visible gap instead of a silent pass.
+        str: One of the module-level status constants, matched case- and
+        whitespace-insensitively. None, an empty string, or an unrecognized
+        spelling yields ``unknown``.
     """
     if not raw:
         return UNKNOWN
@@ -69,12 +90,13 @@ def split_full_name(full_name: str) -> tuple[str, str]:
     """Split an Allure ``fullName`` into its module path and test name.
 
     Args:
-        full_name: For example ``tests.test_config.TestValidation#test_duplicate``.
+        full_name (str): For example
+            ``tests.test_config.TestValidation#test_duplicate``.
 
     Returns:
-        A ``(module, test_name)`` pair. When no separator is present the whole
-        string is treated as the test name and the module is empty, which is
-        preferable to inventing a module that the source never stated.
+        tuple[str, str]: A ``(module, test_name)`` pair, split at the first
+        ``#``. Without a separator the whole string is the test name and the
+        module is empty, never invented.
     """
     if _FULL_NAME_SEPARATOR in full_name:
         module, _, test_name = full_name.partition(_FULL_NAME_SEPARATOR)
@@ -86,12 +108,12 @@ def strip_parameters(name: str) -> tuple[str, str | None]:
     """Separate a parametrized test name from its bracketed parameter id.
 
     Args:
-        name: For example ``test_country_by_name[germany]``.
+        name (str): For example ``test_country_by_name[germany]``.
 
     Returns:
-        A ``(base_name, parameter_id)`` pair, with the id None when the name
-        carries no brackets. Parameters are stored as data rather than left in
-        the name so that every case of a parametrized test shares one identity.
+        tuple[str, str | None]: A ``(base_name, parameter_id)`` pair, the id
+        None when the name carries no trailing brackets. Every case of a
+        parametrized test therefore shares one base name.
     """
     match = _PARAM_SUFFIX.match(name.strip())
     if match is None:
@@ -103,12 +125,11 @@ def params_hash(params: dict[str, str]) -> str:
     """Return a stable digest of a parameter set, used as part of the row key.
 
     Args:
-        params: Parameter name to value mapping.
+        params (dict[str, str]): Parameter name to value mapping.
 
     Returns:
-        A short hex digest. Keys are sorted before hashing so that two runs
-        producing the same parameters in a different order do not look like two
-        different rows.
+        str: The first 12 hex characters of a SHA-1 over the key-sorted JSON,
+        so the same parameters in a different order hash the same.
     """
     canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
     return hashlib.sha1(canonical.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
@@ -119,11 +140,14 @@ class ParsedStep:
     """One ``allure.step`` recorded inside a test result.
 
     Attributes:
-        ordinal: Position among the steps of this test, starting at zero.
-        name: The step's declared name.
-        status: Normalized status.
-        duration_ms: Wall time, or None when the format did not record it.
-        parent_ordinal: Ordinal of the enclosing step, or None at the top level.
+        ordinal (int): Position among the steps of this test, depth-first,
+            starting at zero.
+        name (str): The step's declared name.
+        status (str): Normalized status.
+        duration_ms (int | None): Wall time, or None when the format did not
+            record it.
+        parent_ordinal (int | None): Ordinal of the enclosing step, or None at
+            the top level.
     """
 
     ordinal: int
@@ -133,6 +157,7 @@ class ParsedStep:
     parent_ordinal: int | None = None
 
 
+# Added 2026-11-10, when ``steps_omitted`` became the thirteenth field.
 # A plain record of one result's fields, one per column of the row it becomes.
 # Splitting it to satisfy an attribute count would scatter one row across
 # several objects without adding any behaviour.
@@ -141,29 +166,30 @@ class ParsedResult:  # pylint: disable=too-many-instance-attributes
     """One test outcome, normalized away from whichever format produced it.
 
     Attributes:
-        module: Dotted module path, possibly including a class.
-        test_name: Test function name with parameters removed.
-        params: Parameters, merged from the artifact name and the test itself.
-        status: Normalized status.
-        display_name: Human-facing name, which may be an ``allure.title`` and
-            is therefore never used as identity.
-        duration_ms: Wall time, or None when unavailable.
-        message: Failure text, or None.
-        trace: Captured stack trace for a non-passing result, or None. This is
-            the diagnostic payload: a message says a test failed, a trace says
-            where. Kept verbatim rather than summarized, because the line that
-            explains a flake is rarely the one a summarizer would keep.
-        labels: Allure labels such as epic, feature, story, severity.
-        history_id: The source format's own identity hash, kept for reference.
-        test_id: Assigned stable ID such as ``PAWA_10001``, when the test
-            carries one. Null for every artifact produced before the scheme
-            existed, which is all backfilled history.
-        steps: Recorded steps, empty when the format carries none.
-        steps_omitted: True when the source recorded steps and the collector
-            dropped them by policy - a passing result from an artifact whose
-            step policy is ``failures``. Kept separate so that ``has_steps``
-            still answers "did the source record steps", and an empty step list
-            is never mistaken for a format that cannot express any.
+        module (str): Dotted module path, possibly including a class.
+        test_name (str): Test function name with parameters removed.
+        params (dict[str, str]): Parameters, merged from the artifact name and
+            the test itself.
+        status (str): Normalized status.
+        display_name (str): Human-facing name, which may be an
+            ``allure.title`` and is never used as identity.
+        duration_ms (int | None): Wall time, or None when unavailable.
+        message (str | None): Failure text, or None.
+        trace (str | None): The stack trace of a non-passing result, verbatim,
+            or None.
+        labels (dict[str, str]): Allure labels such as epic, feature, story,
+            severity; empty for JUnit.
+        history_id (str | None): The source format's own identity hash, kept
+            for reference only.
+        test_id (str | None): Assigned stable ID such as ``PAWA_10001`` when
+            the test carries one; None for every artifact produced before the
+            scheme existed, which is all backfilled history.
+        steps (tuple[ParsedStep, ...]): Recorded steps, empty when the format
+            carries none or the policy dropped them.
+        steps_omitted (bool): True when the source recorded steps and the
+            collector dropped them by policy: a passing or skipped result from
+            an artifact whose step policy is ``failures`` (``DESIGN.md``
+            section 8).
     """
 
     module: str
@@ -184,13 +210,12 @@ class ParsedResult:  # pylint: disable=too-many-instance-attributes
         """Build the cross-run identity for this result.
 
         Args:
-            repo: Owner-qualified repository name.
+            repo (str): Owner-qualified repository name.
 
         Returns:
-            ``{repo}::{module}::{test_name}``, derived from the module path and
-            function name only. Parameters are excluded so that every case of a
-            parametrized test shares one identity, and the display name is
-            excluded because it can change without the test changing.
+            str: ``{repo}::{module}::{test_name}``. Parameters and the display
+            name take no part, so every case of a parametrized test shares one
+            identity and a retitled test keeps it.
         """
         return f"{repo}::{self.module}::{self.test_name}"
 
@@ -198,14 +223,16 @@ class ParsedResult:  # pylint: disable=too-many-instance-attributes
         """Render this result as the JSON object written to the durable log.
 
         Args:
-            repo: Owner-qualified repository name.
-            run_id: Actions run this result came from.
-            attempt: Run attempt number.
-            source_format: Which parser produced it, so that a later gap in the
-                data can be attributed to the format rather than to the test.
+            repo (str): Owner-qualified repository name.
+            run_id (int): Actions run this result came from.
+            attempt (int): Run attempt number.
+            source_format (str): The parser that produced it, so a gap in the
+                data can be attributed to the format rather than the test.
 
         Returns:
-            A JSON-serializable dict, one line of NDJSON.
+            dict[str, Any]: A JSON-serializable dict, one line of NDJSON.
+            ``has_trace`` is true when a trace is present, and ``has_steps`` is
+            true when steps are present or were omitted by policy.
         """
         return {
             "repo": repo,
@@ -246,20 +273,23 @@ class RunRecord:
     """One Actions workflow run, with the fields a report needs to group by.
 
     Attributes:
-        repo: Owner-qualified repository name.
-        run_id: Actions run id.
-        attempt: Run attempt number.
-        workflow: Workflow name. Not used as identity - see DESIGN.md section 8,
-            where one repository has run under two workflow names.
-        event: Trigger event.
-        head_sha: The test code's commit. For dispatch-driven suites this is not
-            the version of the system under test; see DESIGN.md section 7.
-        status: Actions status.
-        conclusion: Actions conclusion, None while a run is in flight.
-        started_at: UTC ISO-8601 timestamp.
-        updated_at: UTC ISO-8601 timestamp.
-        sut_version: Version of the system actually under test, when it can be
-            resolved. Deliberately null rather than falling back to head_sha.
+        repo (str): Owner-qualified repository name.
+        run_id (int): Actions run id.
+        attempt (int): Run attempt number.
+        workflow (str): Workflow name. Not used as identity, since one
+            repository has run under two workflow names (``DESIGN.md``
+            section 8).
+        event (str): Trigger event.
+        head_sha (str): The test code's commit. For dispatch-driven suites this
+            is not the version of the system under test (``DESIGN.md``
+            section 7).
+        status (str): Actions status.
+        conclusion (str | None): Actions conclusion, None while a run is in
+            flight.
+        started_at (str): UTC ISO-8601 timestamp.
+        updated_at (str): UTC ISO-8601 timestamp.
+        sut_version (str | None): Version of the system actually under test
+            when it can be resolved; otherwise None, never ``head_sha``.
     """
 
     repo: str
@@ -278,7 +308,7 @@ class RunRecord:
         """Render this run as the JSON object written to the durable log.
 
         Returns:
-            A JSON-serializable dict, one line of NDJSON.
+            dict[str, Any]: A JSON-serializable dict, one line of NDJSON.
         """
         return {
             "repo": self.repo,
