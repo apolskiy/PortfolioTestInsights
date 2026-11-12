@@ -1,7 +1,7 @@
 """Loads and validates ``config/sources.yaml``.
 
 Created: 2026-08-16
-Last updated: 2026-11-10
+Last updated: 2026-11-12
 
 This file contains the records the configuration becomes: :class:`SourceSpec`
 for a repository, :class:`ArtifactSpec` for an artifact pattern within it, and
@@ -14,7 +14,8 @@ Ingestion calls ``load_sources`` before it makes a single request, so a
 ``ConfigError`` stops the run with nothing downloaded or written. The specs
 then decide which artifacts are read, which parser reads them, which steps
 survive, and which ID a test carries; the reports call ``load_sources`` again
-for each repository's display code and ``load_slo`` for the budget policy.
+for each repository's display code and note, and ``load_slo`` for the budget
+policy.
 
 **Validated once, at startup.** Every source needs ``repo``, ``prefix`` and a
 non-empty ``artifacts`` list; every artifact needs ``name``, ``parser`` and
@@ -23,7 +24,7 @@ the accepted sets. A ``test_id_from_name`` pattern must compile and define a
 ``test_id`` group.
 
 **Defaults keep earlier entries unchanged.** ``steps`` defaults to ``all``,
-``keep`` to ``every``, and ``code`` to the prefix. A file with no ``slo`` block
+``keep`` to ``every``, ``code`` to the prefix, and ``note`` to none. A file with no ``slo`` block
 yields the :class:`SloPolicy` defaults.
 
 Specified by ``DESIGN.md`` sections 8 and 10.1.
@@ -178,6 +179,9 @@ class SourceSpec:
             ``test_id`` group that extracts it, matched against the start of
             the name. None for every suite that publishes its ID as a label or
             property.
+        note (str): Context the report prints under its repositories table for
+            this repository, whitespace collapsed to single spaces; empty means
+            none.
     """
 
     repo: str
@@ -185,6 +189,7 @@ class SourceSpec:
     artifacts: tuple[ArtifactSpec, ...]
     code: str = ""
     test_id_from_name: re.Pattern[str] | None = None
+    note: str = ""
 
     @property
     def display_code(self) -> str:
@@ -284,6 +289,7 @@ def _build_source(entry: dict, config_path: Path) -> SourceSpec:
         artifacts=tuple(_build_artifact(item, repo, config_path) for item in raw_artifacts),
         code=str(entry.get("code") or ""),
         test_id_from_name=_build_test_id_pattern(entry.get("test_id_from_name"), repo, config_path),
+        note=" ".join(str(entry.get("note") or "").split()),
     )
 
 

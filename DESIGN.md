@@ -787,6 +787,17 @@ collapses to one row per test first: a test's ID lives on the rows recorded
 since the scheme existed while its older rows still carry `NULL`, so counting
 `NULL`s directly reported every test as unassigned.
 
+**A repository can carry a note, printed under the legend.** Added 2026-11-12.
+A failure count means different things in different suites, and the tables
+cannot say which. In AP-Harness-QC a failure is a harness defect: its unit and
+system tests must be green before any model runs, since a model result is
+valid only when the harness that produced it works. In AP-Model-QC a graded
+case is expected to fail wherever a model falls short, and that failure is a
+finding about the model. Printed side by side without that context, the two
+read as the same kind of number. The note is an optional `note` on the source
+in `config/sources.yaml`, written by the repository's owner, so the context
+sits beside the configuration that admits the source, not in report code.
+
 ### 10.3 The published page
 
 The HTML page is generated from the record on every run, never hand-written,

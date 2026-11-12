@@ -1,7 +1,7 @@
 """Descriptive reports over the derived index.
 
 Created: 2026-08-16
-Last updated: 2026-11-10
+Last updated: 2026-11-12
 
 This file contains the command line ``python -m collector.reports`` (``main``);
 ``build_report``, which assembles the full Markdown report; one function per
@@ -12,7 +12,8 @@ repository in a table (``test_labels``, ``repo_codes``).
 
 It runs last (``make report``, ``make site``): it reads only
 ``build/results.sqlite``, which ``make db`` built from ``data/``, plus
-``config/sources.yaml`` for repository codes and the error-budget policy. The
+``config/sources.yaml`` for repository codes and notes and the error-budget
+policy. The
 Markdown it returns is written to ``--out`` or handed to
 :func:`collector.render.render_page` for ``--html``; nothing here writes to the
 record or gates any build.
@@ -202,16 +203,23 @@ def repositories(connection: sqlite3.Connection) -> list[str]:
 
     One row per repository the index holds, with its code, a link, its test
     count, and the range of assigned IDs in use plus how many tests carry none.
-    A configured source never collected is not listed. Design: ``DESIGN.md``
-    section 10.2.
+    A configured source never collected is not listed. Under the table, one
+    bullet per listed repository whose source carries a ``note``. Design:
+    ``DESIGN.md`` section 10.2.
 
     Args:
         connection (sqlite3.Connection): Open index connection.
 
     Returns:
         list[str]: Report lines.
+
+    Raises:
+        ConfigError: If the source configuration is malformed.
     """
-    codes = repo_codes()
+    sources = load_sources()
+    codes = {source.repo: source.display_code for source in sources}
+    notes = {source.repo: source.note for source in sources if source.note}
+    listed: list[str] = []
     lines = ["## Repositories", ""]
     lines.append(
         "Each code is the prefix of that suite's assigned test IDs, so a code in any "
@@ -244,6 +252,12 @@ def repositories(connection: sqlite3.Connection) -> list[str]:
             span = "none published yet"
         link = f"[{repo}](https://github.com/{repo})"
         lines.append(f"| {_code(repo, codes)} | {link} | {tests} | {span} |")
+        listed.append(repo)
+
+    noted = [repo for repo in listed if repo in notes]
+    if noted:
+        lines.append("")
+        lines.extend(f"- **{_code(repo, codes)}.** {notes[repo]}" for repo in noted)
     return lines + [""]
 
 

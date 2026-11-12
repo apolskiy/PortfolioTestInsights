@@ -15,7 +15,7 @@ was being deleted on a rolling 90-day clock, because for public repositories 90
 days is GitHub's retention *maximum* and not merely its default. No setting
 prevents it; persisting the data elsewhere is the only mechanism there is.
 
-> **Documentation status:** describes **v0.5.0**, reviewed 2026-11-10.
+> **Documentation status:** describes **v0.6.0**, reviewed 2026-11-12.
 > Each section carries the release and date its content last changed, so a
 > reader arriving at a later version can see at a glance which parts moved. This
 > file always describes the *current* release; the reasoning behind the design,
@@ -25,7 +25,7 @@ prevents it; persisting the data elsewhere is the only mechanism there is.
 
 ## 1. What it collects
 
-<sub>v0.5.0 &middot; 2026-11-10</sub>
+<sub>v0.6.0 &middot; 2026-11-12</sub>
 
 | Repository | Artifact | Format |
 |---|---|---|
@@ -41,8 +41,18 @@ combined, so for their gate artifacts only the Ubuntu leg is read and steps are
 kept on failing results only. Live evaluation runs are kept in full. See
 [DESIGN.md §8](DESIGN.md).
 
+Their failures mean different things, and the report says which in a note under
+its Repositories table. AP-Harness-QC's unit and system tests must all be green,
+because a model result is valid only when the harness that produced it works,
+so a failure there is a harness defect. An AP-Model-QC graded case is expected
+to fail wherever a model falls short, so a failure there is a finding about the
+model. Any source can carry such a note, as `note` in `config/sources.yaml`.
+See [DESIGN.md §10.2](DESIGN.md).
+
 **As of the first backfill: 13,458 result rows across 234 distinct tests and 136
-runs, reaching back to 2026-05-21.**
+runs, reaching back to 2026-05-21.** With the two Multi-LLM Evaluation
+repositories collected on 2026-11-12, the record held 81,291 result rows across
+539 runs.
 
 Three formats rather than one because the suites genuinely publish three. The
 largest suite emits no JUnit XML at all, so a JUnit-only collector would have

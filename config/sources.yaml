@@ -123,6 +123,15 @@ sources:
     prefix: MQC
     code: MQC-H
     test_id_from_name: "^(?P<test_id>MQC_[A-Z]+_[A-Z]+_\\d{6})(?:_|$)"
+    # Added 2026-11-12, at the owner's direction, so a reader does not take
+    # these failures for model results.
+    note: >-
+      Unit and system tests of the evaluation harness itself, on recorded
+      responses; none measures a model. They must all pass, because a model
+      result is valid only when the harness that produced it works. That is
+      why every unit test runs inside the CI jobs: no model is evaluated
+      without a green harness, and a failure here is a harness defect. The failures recorded came from the harness while it was being
+      built and fixed.
     artifacts:
       # Unit and system tiers are separate entries so that once-per-day
       # selection keeps one of each rather than one of either.
@@ -147,6 +156,16 @@ sources:
     prefix: MQC
     code: MQC-M
     test_id_from_name: "^(?P<test_id>MQC_[A-Z]+_[A-Z]+_\\d{6})(?:_|$)"
+    # Added 2026-11-12, at the owner's direction, so a reader can tell a
+    # model finding from an instrument defect.
+    note: >-
+      Evaluation cases run against four LLM engines. The graded cases (`EVAL`,
+      `TOOL`, `SEC`) are expected to fail wherever a model falls short: such a
+      failure is a finding about that model, not a defect in the suite, and it
+      is valid only when the harness (MQC-H) is green. The precondition tests
+      (`CAS`, `UNI`) must pass before any model is measured.
+      Many failures recorded while the harness and the cases were being built
+      came from those, not from the models.
     artifacts:
       # Preconditions are the model repository's unit tests: they must pass
       # before any engine is measured, so once per day records that they held.

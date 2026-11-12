@@ -17,6 +17,22 @@ Dates are **UTC**, matching git commit dates and CI runners.
 
 ---
 
+## v0.6.0 - 2026-11-12
+
+### Added
+
+- **A repository can carry a note, printed under the legend.** The first
+  collection of AP-Harness-QC and AP-Model-QC, on 2026-11-12, published 1,245
+  failing AP-Model-QC observations beside the other suites' handful with
+  nothing to say what they meant. A failure means different things in the two:
+  AP-Harness-QC's unit and system tests must be green before any model runs,
+  since a model result is valid only when the harness works, so a failure there
+  is a harness defect; an AP-Model-QC graded case is expected to fail wherever
+  a model falls short, so a failure there is a finding about the model. Each
+  source now accepts an optional `note` in `config/sources.yaml`, printed as a
+  bullet under the Repositories table, and both QC sources carry one. DESIGN.md
+  §10.2 records it.
+
 ## v0.5.2 - 2026-11-11
 
 ### Fixed
