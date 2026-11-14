@@ -18,3 +18,5 @@
 {"artifact_id": 13102387956, "created_at": "2026-11-01T21:50:43Z", "name": "mqc-reports-system-none-replay-ubuntu-26.04", "repo": "apolskiy/AP-Harness-QC", "results": 24, "run_id": 41353711735}
 {"artifact_id": 13995426230, "created_at": "2026-11-12T23:44:58Z", "name": "mqc-reports-system-none-replay-ubuntu-26.04", "repo": "apolskiy/AP-Harness-QC", "results": 24, "run_id": 43330918556}
 {"artifact_id": 13995366440, "created_at": "2026-11-12T23:44:07Z", "name": "mqc-reports-unit-none-replay-ubuntu-26.04", "repo": "apolskiy/AP-Harness-QC", "results": 1089, "run_id": 43330918556}
+{"artifact_id": 13998600595, "created_at": "2026-11-13T00:28:18Z", "name": "mqc-reports-system-none-replay-ubuntu-26.04", "repo": "apolskiy/AP-Harness-QC", "results": 24, "run_id": 43336761927}
+{"artifact_id": 13998110852, "created_at": "2026-11-13T00:26:53Z", "name": "mqc-reports-unit-none-replay-ubuntu-26.04", "repo": "apolskiy/AP-Harness-QC", "results": 1097, "run_id": 43336761927}
