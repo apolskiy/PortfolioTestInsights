@@ -437,3 +437,16 @@
 {"artifact_id": 14176074236, "created_at": "2026-11-15T19:27:51Z", "name": "mqc-reports-cases-p2_p4-replay-claude-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 70, "run_id": 43751469276}
 {"artifact_id": 14175999190, "created_at": "2026-11-15T19:25:18Z", "name": "mqc-reports-cases-p0-replay-claude-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 19, "run_id": 43751469276}
 {"artifact_id": 14175874797, "created_at": "2026-11-15T19:25:50Z", "name": "mqc-reports-cases-p0-replay-gemini-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 19, "run_id": 43751469205}
+{"artifact_id": 14254741190, "created_at": "2026-11-16T17:37:53Z", "name": "mqc-reports-cases-p0-replay-openai-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 19, "run_id": 43918575210}
+{"artifact_id": 14254271022, "created_at": "2026-11-16T17:36:22Z", "name": "mqc-reports-cases-preconditions-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 291, "run_id": 43918575210}
+{"artifact_id": 14254181689, "created_at": "2026-11-16T17:40:19Z", "name": "mqc-reports-cases-p2_p4-replay-grok-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 70, "run_id": 43918575512}
+{"artifact_id": 14254176519, "created_at": "2026-11-16T17:38:39Z", "name": "mqc-reports-cases-p1-replay-gemini-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 6, "run_id": 43918575441}
+{"artifact_id": 14254061656, "created_at": "2026-11-16T17:37:56Z", "name": "mqc-reports-cases-p0-replay-claude-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 19, "run_id": 43918575734}
+{"artifact_id": 14253622303, "created_at": "2026-11-16T17:40:43Z", "name": "mqc-reports-cases-p2_p4-replay-claude-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 70, "run_id": 43918575734}
+{"artifact_id": 14253571742, "created_at": "2026-11-16T17:39:05Z", "name": "mqc-reports-cases-p1-replay-grok-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 6, "run_id": 43918575512}
+{"artifact_id": 14253511882, "created_at": "2026-11-16T17:39:21Z", "name": "mqc-reports-cases-p1-replay-claude-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 6, "run_id": 43918575734}
+{"artifact_id": 14253311610, "created_at": "2026-11-16T17:37:39Z", "name": "mqc-reports-cases-p0-replay-grok-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 19, "run_id": 43918575512}
+{"artifact_id": 14253306999, "created_at": "2026-11-16T17:40:06Z", "name": "mqc-reports-cases-p2_p4-replay-openai-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 70, "run_id": 43918575210}
+{"artifact_id": 14253266614, "created_at": "2026-11-16T17:37:41Z", "name": "mqc-reports-cases-p0-replay-gemini-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 19, "run_id": 43918575441}
+{"artifact_id": 14252638593, "created_at": "2026-11-16T17:40:04Z", "name": "mqc-reports-cases-p2_p4-replay-gemini-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 70, "run_id": 43918575441}
+{"artifact_id": 14252478866, "created_at": "2026-11-16T17:38:59Z", "name": "mqc-reports-cases-p1-replay-openai-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 6, "run_id": 43918575210}
