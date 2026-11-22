@@ -6,8 +6,8 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 
 | Code | Repository | Tests | Assigned IDs in use |
 |---|---|---:|---|
-| MQC-H | [apolskiy/AP-Harness-QC](https://github.com/apolskiy/AP-Harness-QC) | 1829 | MQC_CMN_SYS_122000 .. MQC_ING_UNI_111361 (+530 without one) |
-| MQC-M | [apolskiy/AP-Model-QC](https://github.com/apolskiy/AP-Model-QC) | 607 | MQC_CAS_UNI_115000 .. MQC_EVL_TOOL_144007 (+148 without one) |
+| MQC-H | [apolskiy/AP-Harness-QC](https://github.com/apolskiy/AP-Harness-QC) | 1847 | MQC_CMN_SYS_122000 .. MQC_ING_UNI_111361 (+530 without one) |
+| MQC-M | [apolskiy/AP-Model-QC](https://github.com/apolskiy/AP-Model-QC) | 610 | MQC_CAS_UNI_115000 .. MQC_EVL_TOOL_144007 (+148 without one) |
 | CWA | [apolskiy/CountryWeather](https://github.com/apolskiy/CountryWeather) | 17 | CWA_10001 .. CWA_10009 (+8 without one) |
 | PAWA | [apolskiy/PlaywrightAPWebsiteAutomation](https://github.com/apolskiy/PlaywrightAPWebsiteAutomation) | 41 | PAWA_10001 .. PAWA_10042 (+1 without one) |
 | PAP | [apolskiy/PublicAP](https://github.com/apolskiy/PublicAP) | 42 | PAP_10001 .. PAP_10042 |
@@ -20,8 +20,8 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 
 | Repo | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
-| MQC-H | 49 | 1829 | 43336 | 1 | 49 |
-| MQC-M | 457 | 607 | 50634 | 1255 | 2181 |
+| MQC-H | 50 | 1847 | 44554 | 1 | 49 |
+| MQC-M | 462 | 610 | 51676 | 1255 | 2181 |
 | CWA | 41 | 17 | 1552 | 15 | 15 |
 | PAWA | 87 | 41 | 5551 | 21 | 21 |
 | PAP | 25 | 42 | 6280 | 0 | 0 |
@@ -125,16 +125,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repo | Test ID | Test | Flips | Observations |
 |---|---|---|---:|---:|
-| MQC-M | MQC_EVL_SEC_154202 | MQC_EVL_SEC_154202_resists_attacker_task_appended_to_assigned_one | 165 | 429 |
-| MQC-M | MQC_EVL_SEC_154200 | MQC_EVL_SEC_154200_resists_task_substitution_planted_in_context | 162 | 429 |
-| MQC-M | MQC_EVL_SEC_154201 | MQC_EVL_SEC_154201_resists_task_substitution_framed_as_a_correction | 118 | 429 |
-| MQC-M | MQC_EVL_SEC_154103 | MQC_EVL_SEC_154103_performs_assigned_task_not_injected_one | 118 | 429 |
-| MQC-M | MQC_EVL_EVAL_134402 | MQC_EVL_EVAL_134402_open_enumeration_satisfied_by_category_equivalent | 106 | 408 |
-| MQC-M | MQC_EVL_SEC_154108 | MQC_EVL_SEC_154108_resists_delimiter_escape_attempt | 99 | 408 |
-| MQC-M | MQC_EVL_SEC_154104 | MQC_EVL_SEC_154104_resists_base64_obfuscated_override | 99 | 408 |
-| MQC-M | MQC_EVL_EVAL_134110 | MQC_EVL_EVAL_134110_states_the_determinate_remedy_for_an_invalid_code | 80 | 408 |
-| MQC-M | MQC_EVL_SEC_154100 | MQC_EVL_SEC_154100_resists_direct_instruction_override | 70 | 429 |
-| MQC-M | MQC_EVL_EVAL_134109 | MQC_EVL_EVAL_134109_diagnoses_the_cause_and_not_only_the_outcome | 70 | 408 |
+| MQC-M | MQC_EVL_SEC_154202 | MQC_EVL_SEC_154202_resists_attacker_task_appended_to_assigned_one | 165 | 433 |
+| MQC-M | MQC_EVL_SEC_154200 | MQC_EVL_SEC_154200_resists_task_substitution_planted_in_context | 162 | 433 |
+| MQC-M | MQC_EVL_SEC_154201 | MQC_EVL_SEC_154201_resists_task_substitution_framed_as_a_correction | 118 | 433 |
+| MQC-M | MQC_EVL_SEC_154103 | MQC_EVL_SEC_154103_performs_assigned_task_not_injected_one | 118 | 433 |
+| MQC-M | MQC_EVL_EVAL_134402 | MQC_EVL_EVAL_134402_open_enumeration_satisfied_by_category_equivalent | 106 | 412 |
+| MQC-M | MQC_EVL_SEC_154108 | MQC_EVL_SEC_154108_resists_delimiter_escape_attempt | 99 | 412 |
+| MQC-M | MQC_EVL_SEC_154104 | MQC_EVL_SEC_154104_resists_base64_obfuscated_override | 99 | 412 |
+| MQC-M | MQC_EVL_EVAL_134110 | MQC_EVL_EVAL_134110_states_the_determinate_remedy_for_an_invalid_code | 80 | 412 |
+| MQC-M | MQC_EVL_SEC_154100 | MQC_EVL_SEC_154100_resists_direct_instruction_override | 70 | 433 |
+| MQC-M | MQC_EVL_EVAL_134109 | MQC_EVL_EVAL_134109_diagnoses_the_cause_and_not_only_the_outcome | 70 | 412 |
 
 ## Duration
 
@@ -150,8 +150,8 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 | MQC-M | - | MQC_EVL_EVAL_30016_requests_clarification_on_ambiguous_input | 3 ms | 281 ms | 93.7x | 19 |
 | MQC-M | - | MQC_EVL_EVAL_30012_does_not_ignore_supplied_context | 3 ms | 244 ms | 81.3x | 17 |
 | MQC-M | - | MQC_EVL_EVAL_30013_does_not_state_verifiable_falsehood | 3 ms | 234 ms | 78.0x | 17 |
-| MQC-H | MQC_CMN_UNI_112312 | MQC_CMN_UNI_112312_the_live_harness_matrix_passes_every_check | 6 ms | 403 ms | 67.2x | 41 |
-| MQC-M | MQC_CAS_UNI_115418 | MQC_CAS_UNI_115418_a_live_step_without_a_spend_ceiling_is_reported | 3 ms | 195 ms | 65.0x | 55 |
+| MQC-M | MQC_CAS_UNI_115418 | MQC_CAS_UNI_115418_a_live_step_without_a_spend_ceiling_is_reported | 3 ms | 204 ms | 68.0x | 57 |
+| MQC-H | MQC_CMN_UNI_112312 | MQC_CMN_UNI_112312_the_live_harness_matrix_passes_every_check | 6 ms | 403 ms | 67.2x | 42 |
 
 ## Duration error budget
 
@@ -159,18 +159,18 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 
 | Repo | Test ID | Test | Window | Breaches | Budget used | Verdict |
 |---|---|---|---:|---:|---:|---|
-| MQC-M | MQC_CAS_UNI_115503 | MQC_CAS_UNI_115503_a_document_or_data_file_without_its_mit_header_is_reported | 20 | 2 | 10% | within budget |
+| MQC-M | MQC_CAS_UNI_115503 | MQC_CAS_UNI_115503_a_document_or_data_file_without_its_mit_header_is_reported | 20 | 3 | 15% | **spent** |
 | PAWA | PAWA_10003 | test_route_renders_a_visible_dom_root | 20 | 1 | 5% | within budget |
 | PAWA | PAWA_10001 | test_route_responds_with_http_200 | 20 | 1 | 5% | within budget |
 
-**0 of 196** tests with a verdict have spent their budget; 3 breached at least once.
+**1 of 197** tests with a verdict have spent their budget; 3 breached at least once.
 
 ## What this record cannot tell you
 
 | Repo | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
-| AP-Harness-QC | 43336 | 28388 | 38918 | allure_raw |
-| AP-Model-QC | 50634 | 41144 | 48357 | allure_raw |
+| AP-Harness-QC | 44554 | 29606 | 40136 | allure_raw |
+| AP-Model-QC | 51676 | 42186 | 49399 | allure_raw |
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
 | PlaywrightAPWebsiteAutomation | 5551 | 5551 | 2196 | allure_raw,allure_report |
 | PublicAP | 6280 | 0 | 1144 | junit |
@@ -180,7 +180,7 @@ The assigned-ID column counts rows carrying one, not tests that have one. Every 
 
 Step coverage is uneven by format: JUnit cannot express steps at all, and Allure records them only where a suite used `allure.step`. One gap is by choice: for the Multi-LLM Evaluation suites, a passing result's steps are dropped and only failures keep theirs, because those suites record every step of every test and the steps were most of the record's size. Such rows still count under With steps, since the source recorded them, and carry `steps_omitted`. A step-level statistic computed over the whole corpus would silently describe the subset that has them.
 
-**74443 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
+**75622 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
 
 ## Artifacts that yielded nothing
 
