@@ -681,3 +681,4 @@
 {"artifact_id": 14728363075, "created_at": "2026-11-21T22:53:52Z", "name": "mqc-reports-cases-p0-replay-gemini-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 20, "run_id": 44958287091}
 {"artifact_id": 14727789778, "created_at": "2026-11-21T22:56:44Z", "name": "mqc-reports-cases-p2_p4-replay-grok-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 70, "run_id": 44958287089}
 {"artifact_id": 14727774484, "created_at": "2026-11-21T22:54:24Z", "name": "mqc-reports-cases-p0-replay-grok-ubuntu-26.04", "repo": "apolskiy/AP-Model-QC", "results": 20, "run_id": 44958287089}
+{"artifact_id": 14774359164, "created_at": "2026-11-22T21:57:49Z", "name": "mqc-reports-cases-gemini-preconditions", "repo": "apolskiy/AP-Model-QC", "results": 329, "run_id": 45074815599}

@@ -21,7 +21,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 | Repo | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
 | MQC-H | 50 | 1847 | 44554 | 1 | 49 |
-| MQC-M | 462 | 610 | 51676 | 1255 | 2181 |
+| MQC-M | 463 | 610 | 52005 | 1255 | 2181 |
 | CWA | 41 | 17 | 1552 | 15 | 15 |
 | PAWA | 87 | 41 | 5551 | 21 | 21 |
 | PAP | 25 | 42 | 6280 | 0 | 0 |
@@ -150,7 +150,7 @@ Passing runs only, for tests with at least 8 of them - a failed test's duration 
 | MQC-M | - | MQC_EVL_EVAL_30016_requests_clarification_on_ambiguous_input | 3 ms | 281 ms | 93.7x | 19 |
 | MQC-M | - | MQC_EVL_EVAL_30012_does_not_ignore_supplied_context | 3 ms | 244 ms | 81.3x | 17 |
 | MQC-M | - | MQC_EVL_EVAL_30013_does_not_state_verifiable_falsehood | 3 ms | 234 ms | 78.0x | 17 |
-| MQC-M | MQC_CAS_UNI_115418 | MQC_CAS_UNI_115418_a_live_step_without_a_spend_ceiling_is_reported | 3 ms | 204 ms | 68.0x | 57 |
+| MQC-M | MQC_CAS_UNI_115418 | MQC_CAS_UNI_115418_a_live_step_without_a_spend_ceiling_is_reported | 3 ms | 204 ms | 68.0x | 58 |
 | MQC-H | MQC_CMN_UNI_112312 | MQC_CMN_UNI_112312_the_live_harness_matrix_passes_every_check | 6 ms | 403 ms | 67.2x | 42 |
 
 ## Duration error budget
@@ -170,7 +170,7 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 | Repo | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
 | AP-Harness-QC | 44554 | 29606 | 40136 | allure_raw |
-| AP-Model-QC | 51676 | 42186 | 49399 | allure_raw |
+| AP-Model-QC | 52005 | 42515 | 49728 | allure_raw |
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
 | PlaywrightAPWebsiteAutomation | 5551 | 5551 | 2196 | allure_raw,allure_report |
 | PublicAP | 6280 | 0 | 1144 | junit |
