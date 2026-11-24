@@ -23,7 +23,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 | MQC-H | 50 | 1847 | 44554 | 1 | 49 |
 | MQC-M | 463 | 610 | 52005 | 1255 | 2181 |
 | CWA | 41 | 17 | 1552 | 15 | 15 |
-| PAWA | 87 | 41 | 5551 | 21 | 21 |
+| PAWA | 88 | 41 | 5641 | 21 | 21 |
 | PAP | 25 | 42 | 6280 | 0 | 0 |
 | VMD | 23 | 140 | 3596 | 0 | 0 |
 
@@ -172,7 +172,7 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 | AP-Harness-QC | 44554 | 29606 | 40136 | allure_raw |
 | AP-Model-QC | 52005 | 42515 | 49728 | allure_raw |
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
-| PlaywrightAPWebsiteAutomation | 5551 | 5551 | 2196 | allure_raw,allure_report |
+| PlaywrightAPWebsiteAutomation | 5641 | 5641 | 2286 | allure_raw,allure_report |
 | PublicAP | 6280 | 0 | 1144 | junit |
 | VM-Deployment-and-Configuration | 3596 | 299 | 348 | allure_raw |
 
