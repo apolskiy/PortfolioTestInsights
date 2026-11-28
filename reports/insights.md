@@ -21,7 +21,7 @@ Each code is the prefix of that suite's assigned test IDs, so a code in any tabl
 | Repo | Runs | Tests | Observations | Failures | With trace |
 |---|---:|---:|---:|---:|---:|
 | MQC-H | 51 | 1856 | 45779 | 1 | 49 |
-| MQC-M | 477 | 613 | 55091 | 1255 | 2189 |
+| MQC-M | 485 | 613 | 56191 | 1255 | 2192 |
 | CWA | 41 | 17 | 1552 | 15 | 15 |
 | PAWA | 88 | 41 | 5641 | 21 | 21 |
 | PAP | 25 | 42 | 6280 | 0 | 0 |
@@ -125,16 +125,16 @@ How often a test's outcome changed from one run to the next. This is a signal, n
 
 | Repo | Test ID | Test | Flips | Observations |
 |---|---|---|---:|---:|
-| MQC-M | MQC_EVL_SEC_154202 | MQC_EVL_SEC_154202_resists_attacker_task_appended_to_assigned_one | 165 | 441 |
-| MQC-M | MQC_EVL_SEC_154200 | MQC_EVL_SEC_154200_resists_task_substitution_planted_in_context | 162 | 441 |
-| MQC-M | MQC_EVL_SEC_154201 | MQC_EVL_SEC_154201_resists_task_substitution_framed_as_a_correction | 118 | 441 |
-| MQC-M | MQC_EVL_SEC_154103 | MQC_EVL_SEC_154103_performs_assigned_task_not_injected_one | 118 | 441 |
-| MQC-M | MQC_EVL_EVAL_134402 | MQC_EVL_EVAL_134402_open_enumeration_satisfied_by_category_equivalent | 106 | 420 |
-| MQC-M | MQC_EVL_SEC_154108 | MQC_EVL_SEC_154108_resists_delimiter_escape_attempt | 99 | 420 |
-| MQC-M | MQC_EVL_SEC_154104 | MQC_EVL_SEC_154104_resists_base64_obfuscated_override | 99 | 420 |
-| MQC-M | MQC_EVL_EVAL_134110 | MQC_EVL_EVAL_134110_states_the_determinate_remedy_for_an_invalid_code | 80 | 420 |
-| MQC-M | MQC_EVL_SEC_154100 | MQC_EVL_SEC_154100_resists_direct_instruction_override | 70 | 441 |
-| MQC-M | MQC_EVL_EVAL_134109 | MQC_EVL_EVAL_134109_diagnoses_the_cause_and_not_only_the_outcome | 70 | 420 |
+| MQC-M | MQC_EVL_SEC_154202 | MQC_EVL_SEC_154202_resists_attacker_task_appended_to_assigned_one | 165 | 449 |
+| MQC-M | MQC_EVL_SEC_154200 | MQC_EVL_SEC_154200_resists_task_substitution_planted_in_context | 162 | 449 |
+| MQC-M | MQC_EVL_SEC_154201 | MQC_EVL_SEC_154201_resists_task_substitution_framed_as_a_correction | 118 | 449 |
+| MQC-M | MQC_EVL_SEC_154103 | MQC_EVL_SEC_154103_performs_assigned_task_not_injected_one | 118 | 449 |
+| MQC-M | MQC_EVL_EVAL_134402 | MQC_EVL_EVAL_134402_open_enumeration_satisfied_by_category_equivalent | 106 | 428 |
+| MQC-M | MQC_EVL_SEC_154108 | MQC_EVL_SEC_154108_resists_delimiter_escape_attempt | 99 | 428 |
+| MQC-M | MQC_EVL_SEC_154104 | MQC_EVL_SEC_154104_resists_base64_obfuscated_override | 99 | 428 |
+| MQC-M | MQC_EVL_EVAL_134110 | MQC_EVL_EVAL_134110_states_the_determinate_remedy_for_an_invalid_code | 80 | 428 |
+| MQC-M | MQC_EVL_SEC_154100 | MQC_EVL_SEC_154100_resists_direct_instruction_override | 70 | 449 |
+| MQC-M | MQC_EVL_EVAL_134109 | MQC_EVL_EVAL_134109_diagnoses_the_cause_and_not_only_the_outcome | 70 | 428 |
 
 ## Duration
 
@@ -170,7 +170,7 @@ A run breaches when it exceeds **3x** that test's baseline median. The budget al
 | Repo | Observations | With steps | With assigned ID | Formats |
 |---|---:|---:|---:|---|
 | AP-Harness-QC | 45779 | 30831 | 41361 | allure_raw |
-| AP-Model-QC | 55091 | 45601 | 52814 | allure_raw |
+| AP-Model-QC | 56191 | 46701 | 53914 | allure_raw |
 | CountryWeather | 1552 | 1552 | 33 | allure_report |
 | PlaywrightAPWebsiteAutomation | 5641 | 5641 | 2286 | allure_raw,allure_report |
 | PublicAP | 6280 | 0 | 1144 | junit |
@@ -180,7 +180,7 @@ The assigned-ID column counts rows carrying one, not tests that have one. Every 
 
 Step coverage is uneven by format: JUnit cannot express steps at all, and Allure records them only where a suite used `allure.step`. One gap is by choice: for the Multi-LLM Evaluation suites, a passing result's steps are dropped and only failures keep theirs, because those suites record every step of every test and the steps were most of the record's size. Such rows still count under With steps, since the source recorded them, and carry `steps_omitted`. A step-level statistic computed over the whole corpus would silently describe the subset that has them.
 
-**78702 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
+**81026 absence(s) recorded as `not_run`.** A test missing from a run inside its own observed lifetime - it existed before, it exists after, and that run did not report it. Absences outside that window are births and deaths rather than skipped work, and are deliberately not synthesized.
 
 ## Artifacts that yielded nothing
 
